@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --color-night: #06081A;
+  --color-card: #0E1228;
+  --color-gold: #C9A460;
+  --color-cream: #F0ECE0;
+  --color-muted: #6B688A;
+  --color-border: #252848;
+  
+  --font-serif: "Georgia", serif;
+}
+
+body {
+  background-color: var(--color-night);
+  color: var(--color-cream);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+::-webkit-scrollbar { display: none; }
+
+/* Force les symboles astro à rester fins et dorés */
+.astro-symbol {
+  font-family: serif;
+  font-variant-emoji: text;
+  color: var(--color-gold);
+  font-style: normal;
+}
