@@ -1,128 +1,200 @@
-import React, { useRef, useEffect } from 'react';
+// src/screens/NatalChart.jsx
+import React, { useRef, useEffect, useState } from 'react';
+import { useAuthContext } from '../context/AuthContext';
+import { useProfile } from '../hooks/useProfile';
 import { positionsPlanetaires, userData } from '../data/astroData';
+
+const INTERPRETATIONS = {
+  "Soleil_Belier": "Ton Soleil en Bélier fait de toi une âme de pionnier. Tu avances sans regarder en arrière, porté par une flamme intérieure que rien ne semble pouvoir éteindre.",
+  "Soleil_Taureau": "Ton Soleil en Taureau t'ancre dans le monde sensible avec une puissance rare. Tu sais que la beauté sauvera le monde et tu la cultives patiemment.",
+  "Soleil_Gemeaux": "Ton Soleil en Gémeaux fait de ton esprit un papillon curieux qui butine les idées. Tu es né pour communiquer, relier et transmettre.",
+  "Soleil_Cancer": "Ton Soleil en Cancer fait de toi un être lunaire, sensible aux marées invisibles de l'âme. Ta maison intérieure est un sanctuaire précieux.",
+  "Soleil_Lion": "Ton Soleil en Lion brille d'un éclat solaire qui attire naturellement les regards. Tu es venu pour créer, rayonner et inspirer.",
+  "Soleil_Vierge": "Ton Soleil en Vierge fait de ton regard un prisme qui décompose la perfection du monde. Ta modestie cache une intelligence analytique fine.",
+  "Soleil_Balance": "Ton Soleil en Balance cherche l'équilibre comme d'autres cherchent l'or. L'équité et la beauté sont tes quêtes essentielles.",
+  "Soleil_Scorpion": "Ton Soleil en Scorpion te donne le courage de plonger dans les profondeurs. Tu es un alchimiste de l'âme, transformant les épreuves en sagesse.",
+  "Soleil_Sagittaire": "Ton Soleil en Sagittaire allume en toi une soif d'horizon. Tu es un explorateur de l'esprit, un philosophe en mouvement permanent.",
+  "Soleil_Capricorne": "Ton Soleil en Capricorne fait de toi un bâtisseur patient. Tu sais que les grandes œuvres se construisent pierre par pierre avec discipline.",
+  "Soleil_Verseau": "Ton Soleil en Verseau fait de toi un visionnaire en avance sur ton temps. Tu vois ce que le monde pourrait devenir. Ta liberté est sacrée.",
+  "Soleil_Poissons": "Ton Soleil en Poissons dissout les frontières entre le rêve et le réel. Tu perçois les courants souterrains de l'âme collective.",
+  
+  "Lune_Belier": "Ta Lune en Bélier rend tes émotions ardentes et immédiates. Tu réagis au quart de tour, ton cœur est un brasier qui s'enflamme sans prévenir.",
+  "Lune_Taureau": "Ta Lune en Taureau cherche la sécurité émotionnelle dans les plaisirs simples et durables. C'est dans le concret que ton cœur trouve la paix.",
+  "Lune_Gemeaux": "Ta Lune en Gémeaux fait de tes émotions un kaléidoscope changeant. Tu analyses ce que tu ressens avec une curiosité insatiable.",
+  "Lune_Cancer": "Ta Lune en Cancer te rend d'une sensibilité profonde et nourricière. Tu ressens tout intensément, comme si le monde vibrait dans ta poitrine.",
+  "Lune_Lion": "Ta Lune en Lion a besoin que ses sentiments soient vus et célébrés. Ton cœur est généreux et sincère dans sa quête de chaleur.",
+  "Lune_Vierge": "Ta Lune en Vierge transforme chaque émotion en un puzzle à résoudre. Tu prends soin des autres avec une minutie et une attention touchante.",
+  "Lune_Balance": "Ta Lune en Balance a besoin d'harmonie émotionnelle comme on a besoin d'air. Tu fuis les conflits qui troublent ta paix intérieure.",
+  "Lune_Scorpion": "Ta Lune en Scorpion vit les émotions avec une intensité souterraine. Tu aimes avec passion et ressens avec une profondeur absolue.",
+  "Lune_Sagittaire": "Ta Lune en Sagittaire a besoin d'espace émotionnel pour s'épanouir. Dès qu'on cherche à t'enfermer, ton cœur galope vers l'horizon.",
+  "Lune_Capricorne": "Ta Lune en Capricorne maîtrise ses émotions avec une discipline ferme. Derrière ta réserve se cache une fidélité à toute épreuve.",
+  "Lune_Verseau": "Ta Lune en Verseau vit les émotions de manière décalée et originale. Ton cœur bat souvent pour des causes plus grandes que toi.",
+  "Lune_Poissons": "Ta Lune en Poissons rend ton monde émotionnel vaste comme l'océan. Tu captes les sentiments des autres et les ambiances invisibles.",
+
+  "Mercure_Belier": "Ton Mercure en Bélier rend ta pensée rapide et incisive. Tu dis ce que tu penses sans détour, avec une franchise d'éclaireur.",
+  "Mercure_Verseau": "Ton Mercure en Verseau fait jaillir des éclairs de génie. Tu penses hors des cadres et inventes des concepts résolument futuristes.",
+  
+  "Venus_Taureau": "Ta Vénus en Taureau aime avec les sens et la peau. L'amour est pour toi une expérience charnelle, esthétique et surtout durable.",
+  "Venus_Balance": "Ta Vénus en Balance cherche l'harmonie et l'élégance dans chaque rencontre. L'équité est le socle de ta façon d'aimer.",
+
+  "Mars_Scorpion": "Ton Mars en Scorpion possède une force souterraine et magnétique. Tu agis dans l'ombre et frappes avec une précision chirurgicale.",
+  "Mars_Capricorne": "Ton Mars en Capricorne est doté d'une endurance exceptionnelle. Tu gravis les montagnes du succès sans jamais faiblir."
+};
 
 const NatalChart = () => {
   const canvasRef = useRef(null);
+  const [planeteSelectionnee, setPlaneteSelectionnee] = useState(null);
+  const { user } = useAuthContext();
+  const { profile, loading } = useProfile(user?.id);
+
+  const displayData = profile?.nom ? profile : userData;
+
+  const getInterpretation = (p) => {
+    if (!p || !p.nom || !p.signe) return "Une influence mystérieuse guide ton ciel.";
+    
+    // Nettoyage des accents et espaces pour correspondre aux clés de INTERPRETATIONS
+    const nomClean = p.nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '');
+    const signeClean = p.signe.split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '');
+    
+    const key = `${nomClean}_${signeClean}`;
+    return INTERPRETATIONS[key] || `Ton ${p.nom} en ${p.signe} apporte une vibration unique et personnelle à ton thème.`;
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const centre = 128;
     
-    // Nettoyage
-    ctx.clearRect(0, 0, 256, 256);
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const size = 256;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
+    ctx.scale(dpr, dpr);
 
-    // Dessin des cercles de la roue
-    const cercles = [118, 98, 58, 20];
-    cercles.forEach((r) => {
+    const centre = size / 2;
+    ctx.clearRect(0, 0, size, size);
+
+    // Cercles de structure
+    [118, 98, 58, 20].forEach((r) => {
       ctx.beginPath();
       ctx.arc(centre, centre, r, 0, Math.PI * 2);
       ctx.strokeStyle = r === 20 ? '#252848' : '#1C2040';
-      ctx.lineWidth = 0.5;
+      ctx.lineWidth = 0.8;
       ctx.stroke();
     });
 
     const degToRad = (deg) => ((deg - 90) * Math.PI) / 180;
 
-    // Signes du Zodiaque - Fix Claude : Forcer le rendu texte
-    const symbolesZodiaque = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
-    symbolesZodiaque.forEach((symbole, i) => {
-      const angleMilieu = degToRad(i * 30 + 15);
-      const x = centre + 108 * Math.cos(angleMilieu);
-      const y = centre + 108 * Math.sin(angleMilieu);
-      
-      ctx.fillStyle = '#5C5A7A'; // Gris bleuté élégant
-      // On ajoute "serif" et on s'assure que le navigateur ne remplace pas par un emoji couleur
-      ctx.font = '12px serif'; 
+    // Signes du Zodiaque
+    const symboles = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
+    symboles.forEach((s, i) => {
+      const angle = degToRad(i * 30 + 15);
+      ctx.fillStyle = '#5C5A7A';
+      ctx.font = '12px serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      // Sous Linux/Android, l'ajout d'un caractère invisible (\uFE0E) force le mode texte
-      ctx.fillText(symbole + '\uFE0E', x, y);
+      ctx.fillText(s + '\uFE0E', centre + 108 * Math.cos(angle), centre + 108 * Math.sin(angle));
     });
 
-    // Dessin des planètes - Fix Claude : Symboles en Or
-    positionsPlanetaires.forEach((p, index) => {
-      // Pour le prototype, on utilise des angles fixes pour éviter le chevauchement aléatoire
-      const angle = degToRad((index * 36) % 360); 
+    // Placement des Planètes
+    const planets = (positionsPlanetaires && positionsPlanetaires.length > 0) ? positionsPlanetaires : [];
+    planets.forEach((p, i) => {
+      const angle = degToRad((i * (360 / planets.length)));
       const x = centre + 78 * Math.cos(angle);
       const y = centre + 78 * Math.sin(angle);
+      
+      // Petit halo de lueur
+      ctx.beginPath();
+      ctx.arc(x, y, 11, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(201, 164, 96, 0.05)';
+      ctx.fill();
 
-      // Le petit cercle de la planète
+      // Corps de planète
       ctx.beginPath();
       ctx.arc(x, y, 10, 0, Math.PI * 2);
-      ctx.fillStyle = '#0E1228'; // Fond sombre
+      ctx.fillStyle = '#0E1228';
       ctx.fill();
-      ctx.strokeStyle = '#C9A460'; // Bordure Or
+      ctx.strokeStyle = '#C9A460';
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      // Le symbole planétaire en Or
       ctx.fillStyle = '#C9A460';
       ctx.font = '11px serif';
-      ctx.fillText(p.symbole + '\uFE0E', x, y);
+      ctx.fillText(p.symbole || '?', x, y);
     });
 
-    // Logo central stylisé
+    // Signature centrale
     ctx.fillStyle = '#C9A460';
-    ctx.font = 'bold 8px serif';
-    ctx.letterSpacing = "2px";
+    ctx.font = 'bold 8px sans-serif';
     ctx.fillText('ASTRA', centre, centre);
-  }, []);
+
+  }, [loading, profile, positionsPlanetaires]);
+
+  if (loading) return <div className="h-full flex items-center justify-center text-gold italic">Synchronisation...</div>;
 
   return (
     <div className="w-full mx-auto px-5 pb-10">
-      {/* Header dynamique */}
       <div className="text-center mb-6">
         <p className="text-[9px] text-muted tracking-[2px] uppercase mb-1">Thème Natal</p>
-        <h3 className="font-serif text-base text-cream">{userData.nom}</h3>
-        <p className="text-[10px] text-muted mt-0.5 uppercase tracking-wider">
-          {userData.dateNaissance} — {userData.lieu}
+        <h3 className="font-serif text-base text-cream">{displayData.nom}</h3>
+        <p className="text-[10px] text-muted mt-0.5 tracking-wider">
+            {(displayData.dateNaissance || displayData.date_naissance) ? 
+                new Date(displayData.dateNaissance || displayData.date_naissance).toLocaleDateString('fr-FR') : 
+                "Éphémérides activées"}
         </p>
       </div>
 
-      {/* Canvas container */}
-      <div className="flex justify-center bg-card/30 rounded-full p-4 border border-border/20 backdrop-blur-sm relative">
-        {/* Effet de halo or derrière la roue */}
-        <div className="absolute inset-0 bg-gold/5 rounded-full blur-3xl" />
-        <canvas
-          ref={canvasRef}
-          width={256}
-          height={256}
-          className="w-64 h-64 relative z-10"
-        />
+      <div className="flex justify-center bg-card/20 rounded-full p-4 border border-gold/10 relative">
+        <div className="absolute inset-0 bg-gold/5 rounded-full blur-3xl opacity-20" />
+        <canvas ref={canvasRef} className="relative z-10" />
       </div>
 
-      {/* Liste des positions détaillée */}
-      <div className="mt-8">
-        <p className="text-[9px] text-muted tracking-[2px] uppercase mb-3">
-          Détails des positions
-        </p>
-        <div className="bg-card border border-border rounded-2xl p-4 space-y-1">
-          {positionsPlanetaires.map((planete, i) => (
-            <div
-              key={i}
-              className={`flex items-center gap-3 py-3 ${
-                i < positionsPlanetaires.length - 1 ? 'border-b border-border/10' : ''
-              }`}
-            >
-              <div
-                className="w-8 h-8 rounded-full border border-gold/30 flex items-center justify-center text-sm flex-shrink-0 astro-symbol text-gold"
-              >
-                {planete.symbole}
-              </div>
-              <div className="flex-1 min-w-0 ml-1">
-                <p className="text-cream text-[13px] font-serif">
-                  {planete.nom} <span className="text-muted text-[10px] font-sans">dans la {planete.maison}</span>
-                </p>
-              </div>
-              <p className="text-[11px] font-sans text-gold/80">
-                {planete.position}
-              </p>
+      <div className="mt-8 space-y-3">
+        {positionsPlanetaires?.map((p, i) => (
+          <div 
+            key={i} 
+            onClick={() => setPlaneteSelectionnee(p)}
+            className="flex items-center gap-3 py-3 cursor-pointer hover:bg-white/5 transition-all rounded-lg px-2 border-b border-border/5"
+          >
+            <div className="w-8 h-8 rounded-full border border-gold/30 flex items-center justify-center text-gold">
+              <span style={{ fontVariantEmoji: 'text' }}>{p.symbole}</span>
             </div>
-          ))}
-        </div>
+            <div className="flex-1 text-left">
+              <p className="text-cream text-[13px] font-serif">{p.nom}</p>
+              <p className="text-muted text-[10px]">en {p.signe}</p>
+            </div>
+            <p className="text-[10px] text-gold/50 font-sans">{p.position}</p>
+          </div>
+        ))}
       </div>
+
+      {planeteSelectionnee && (
+        <div 
+          className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300"
+          onClick={() => setPlaneteSelectionnee(null)}
+        >
+          <div 
+            className="bg-[#0E1228] border border-gold/30 rounded-2xl p-8 max-w-sm w-full text-center relative shadow-2xl shadow-gold/10"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="text-6xl text-gold mb-4" style={{ fontVariantEmoji: 'text' }}>{planeteSelectionnee.symbole}</div>
+            <h2 className="font-serif text-xl text-gold mb-1">{planeteSelectionnee.nom}</h2>
+            <p className="text-muted text-[10px] uppercase tracking-widest mb-4">en {planeteSelectionnee.signe}</p>
+            <div className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent mb-6" />
+            <p className="text-cream/90 text-sm leading-relaxed italic">
+              "{getInterpretation(planeteSelectionnee)}"
+            </p>
+            <button 
+              onClick={() => setPlaneteSelectionnee(null)}
+              className="mt-8 text-[10px] text-gold/50 uppercase tracking-[2px] border border-gold/20 px-8 py-2 rounded-full hover:bg-gold/10 transition-colors"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

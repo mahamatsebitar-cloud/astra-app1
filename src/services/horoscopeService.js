@@ -1,67 +1,56 @@
-import { supabase } from '../lib/supabase';
-import { horoscopesMock } from '../data/astroData';
+// src/services/horoscopeService.js
+import { HOROSCOPES } from '../data/horoscopesData';
+import dayjs from 'dayjs';
 
-function getAujourdHui() {
-  const date = new Date();
-  const annee = date.getFullYear();
-  const mois = String(date.getMonth() + 1).padStart(2, '0');
-  const jour = String(date.getDate()).padStart(2, '0');
-  return `${annee}-${mois}-${jour}`;
-}
+/**
+ * Normalise le nom du signe pour éviter les erreurs de casse ou d'accents.
+ */
+const normalizeSigne = (signe) => {
+  if (!signe) return "Bélier";
+  return signe.charAt(0).toUpperCase() + signe.slice(1).toLowerCase();
+};
 
-export async function getHoroscopeDuJour(signe) {
-  try {
-    const aujourdHui = getAujourdHui();
-    // On s'assure que le signe commence par une majuscule pour la base de données
-    const signeFormate = signe.charAt(0).toUpperCase() + signe.slice(1).toLowerCase();
+/**
+ * Récupère l'horoscope complet selon le signe et le jour de la semaine.
+ */
+const getHoroscopeAujourdhui = (signeSolaire) => {
+  const signeNettoye = normalizeSigne(signeSolaire);
+  
+  // dayjs().day() : 0 (dimanche) à 6 (samedi)
+  const jourSemaine = dayjs().day(); 
+  
+  // Recherche sécurisée dans la base de données
+  const donneesSigne = HOROSCOPES[signeNettoye] || HOROSCOPES["Bélier"];
+  
+  // Fallback sur le jour 0 (dimanche) si le jour spécifique est manquant
+  const horoscopeFinal = donneesSigne[jourSemaine] || donneesSigne[0];
 
-    const { data, error } = await supabase
-      .from('horoscopes')
-      .select('*')
-      .eq('signe', signeFormate)
-      .eq('date', aujourdHui)
-      .single();
+  // Sécurité ultime : structure par défaut si l'objet est vide
+  return {
+    message: horoscopeFinal?.message || "Les étoiles préparent une surprise pour vous aujourd'hui.",
+    amour: horoscopeFinal?.amour || { score: 75, texte: "L'harmonie règne dans votre ciel affectif." },
+    travail: horoscopeFinal?.travail || { score: 70, texte: "Une opportunité se dessine à l'horizon." },
+    bienEtre: horoscopeFinal?.bienEtre || { score: 80, texte: "Écoutez le rythme de votre corps." },
+    tags: horoscopeFinal?.tags || ["Équilibre", "Sérénité"]
+  };
+};
 
-    // PGRST116 est l'erreur "aucun résultat trouvé", on ne veut pas lever d'exception ici
-    if (error && error.code !== 'PGRST116') throw error;
+/**
+ * Extrait uniquement la citation poétique du jour.
+ */
+const getMessageDuJour = (signeSolaire) => {
+  return getHoroscopeAujourdhui(signeSolaire).message;
+};
 
-    if (data) {
-      return { data, error: null };
-    }
+/**
+ * Alias pour obtenir l'objet complet.
+ */
+const getHoroscopeComplet = (signeSolaire) => {
+  return getHoroscopeAujourdhui(signeSolaire);
+};
 
-    // Fallback sur les données Mock si la base est vide pour aujourd'hui
-    const mockData = horoscopesMock.find((h) => h.signe === signeFormate);
-
-    if (!mockData) {
-      throw new Error(`Aucun horoscope trouvé pour le signe ${signeFormate}`);
-    }
-
-    return {
-      data: {
-        ...mockData,
-        date: aujourdHui,
-      },
-      error: null,
-    };
-  } catch (error) {
-    console.error("Erreur Horoscope:", error);
-    return { data: null, error };
-  }
-}
-
-export async function getHoroscopeParSigne(signe, date) {
-  try {
-    const { data, error } = await supabase
-      .from('horoscopes')
-      .select('*')
-      .eq('signe', signe)
-      .eq('date', date)
-      .single();
-
-    if (error) throw error;
-
-    return { data, error: null };
-  } catch (error) {
-    return { data: null, error };
-  }
-}
+export {
+  getHoroscopeAujourdhui,
+  getMessageDuJour,
+  getHoroscopeComplet
+};
