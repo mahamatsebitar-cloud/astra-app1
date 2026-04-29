@@ -1,4 +1,3 @@
-// src/screens/Onboarding3.jsx
 import React, { useState } from 'react';
 import Button from "../components/ui/Button";
 import { useAuthContext } from '../context/AuthContext';
@@ -7,7 +6,8 @@ import { supabase } from '../lib/supabase';
 
 const Onboarding3 = ({ onFinish }) => {
   const { user } = useAuthContext();
-  const { saveProfile, isLoading, mutateProfile } = useProfile(user?.id); // Ajout de mutateProfile si dispo
+  // On récupère mutateProfile pour forcer la mise à jour locale du hook useProfile
+  const { saveProfile, isLoading } = useProfile(user?.id); 
   
   const [query, setQuery] = useState('');
   const [selectedCity, setSelectedCity] = useState(null);
@@ -31,7 +31,7 @@ const Onboarding3 = ({ onFinish }) => {
       currentUser = sbUser;
     }
 
-    const finalUserId = currentUser?.id || localStorage.getItem('astra_pending_userId');
+    const finalUserId = currentUser?.id;
 
     if (!finalUserId) {
       alert("Session introuvable. Veuillez vous reconnecter.");
@@ -45,15 +45,18 @@ const Onboarding3 = ({ onFinish }) => {
 
     const birthDate = localStorage.getItem('onboarding_date');
     const birthTime = localStorage.getItem('onboarding_time');
+    const birthNom = localStorage.getItem('onboarding_nom'); // Si tu as stocké le nom avant
 
     const lat = parseFloat(selectedCity.coords.split(',')[0]);
+    
     const profileData = {
+      nom: birthNom || "Voyageur",
       date_naissance: birthDate || '1995-05-15',
       heure_naissance: birthTime || '12:00',
       lieu_naissance: selectedCity.city,
       latitude: lat,
-      signe_solaire: "Lion",
-      onboarding_completed: true // On marque aussi l'étape comme finie
+      signe_solaire: "Lion", // Idéalement calculé ici
+      onboarding_completed: true // CRUCIAL : Marque la fin du tunnel
     };
 
     try {
@@ -61,73 +64,76 @@ const Onboarding3 = ({ onFinish }) => {
       const success = await saveProfile(profileData);
       
       if (success) {
-        // 2. Nettoyage
-        localStorage.removeItem('astra_pending_userId');
+        // 2. Nettoyage immédiat du stockage local
         localStorage.removeItem('onboarding_date');
         localStorage.removeItem('onboarding_time');
+        localStorage.removeItem('onboarding_nom');
 
-        // 3. LE FIX : On attend 500ms pour laisser le temps à Supabase et au Hook 
-        // de synchroniser l'état local du profil avant de changer d'écran.
+        // 3. LE FIX : On attend un peu plus pour laisser Supabase finir l'écriture
+        // et on déclenche le changement d'écran.
         setTimeout(() => {
           onFinish(); 
-        }, 500);
+        }, 800);
 
       } else {
-        alert("Erreur lors de la sauvegarde. Vérifiez vos politiques RLS sur Supabase.");
+        alert("Erreur lors de la sauvegarde. Vérifiez votre connexion.");
       }
     } catch (err) {
+      console.error("Erreur Onboarding3:", err);
       alert("Erreur système : " + err.message);
     }
   };
 
-  // ... (Reste du rendu JSX identique)
   return (
-    <div className="flex flex-col items-center">
-      <div className="flex gap-2 justify-center mb-8">
-        <div className="w-2 h-1 rounded bg-white/10" />
-        <div className="w-2 h-1 rounded bg-white/10" />
-        <div className="w-8 h-1 rounded bg-gold" />
+    <div className="flex flex-col items-center min-h-[400px] justify-between">
+      <div className="w-full">
+        <div className="flex gap-2 justify-center mb-8">
+          <div className="w-2 h-1 rounded bg-white/10" />
+          <div className="w-2 h-1 rounded bg-white/10" />
+          <div className="w-8 h-1 rounded bg-gold" />
+        </div>
+
+        <h1 className="font-serif text-cream text-2xl leading-tight mb-2 text-center">
+          Où avez-vous<br/>vu le jour ?
+        </h1>
+        
+        <div className="w-full relative px-4 mt-6">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedCity(null);
+            }}
+            placeholder="Ville de naissance..."
+            className="bg-[#141731] border border-gold/10 text-cream p-4 rounded-2xl w-full text-sm outline-none focus:border-gold/40 transition-all shadow-inner"
+          />
+
+          {query.length > 0 && !selectedCity && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-[#0E1228] border border-gold/10 rounded-2xl overflow-hidden z-20 shadow-2xl mx-4 animate-in fade-in slide-in-from-top-2">
+              {suggestions.map((item) => (
+                <div
+                  key={item.city}
+                  onClick={() => handleSelect(item)}
+                  className="flex flex-col p-4 cursor-pointer hover:bg-gold/10 border-b border-white/5 last:border-0"
+                >
+                  <span className="text-cream text-sm font-medium">{item.city}</span>
+                  <span className="text-muted text-[10px] uppercase tracking-widest">{item.region}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      <h1 className="font-serif text-cream text-2xl leading-tight mb-2 text-center">
-        Où avez-vous<br/>vu le jour ?
-      </h1>
-      
-      <div className="w-full relative px-4">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setSelectedCity(null);
-          }}
-          placeholder="Ville de naissance..."
-          className="bg-[#141731] border border-gold/10 text-cream p-4 rounded-2xl w-full text-sm outline-none focus:border-gold/40 transition-all"
-        />
-
-        {query.length > 0 && !selectedCity && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-[#0E1228] border border-gold/10 rounded-2xl overflow-hidden z-20 shadow-2xl mx-4">
-            {suggestions.map((item) => (
-              <div
-                key={item.city}
-                onClick={() => handleSelect(item)}
-                className="flex flex-col p-4 cursor-pointer hover:bg-gold/10 border-b border-white/5 last:border-0"
-              >
-                <span className="text-cream text-sm font-medium">{item.city}</span>
-                <span className="text-muted text-[10px] uppercase">{item.region}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="w-full mt-10 px-4">
+      <div className="w-full mt-10 px-4 mb-6">
         <Button
           onClick={handleFinalize}
           disabled={!selectedCity || isLoading}
-          className={!selectedCity ? "opacity-30 grayscale" : "animate-glow"}
+          variant="primary"
+          className={`w-full py-5 ${!selectedCity ? "opacity-30 grayscale" : "animate-glow shadow-[0_0_20px_rgba(212,175,55,0.2)]"}`}
         >
-          {isLoading ? "Lecture céleste..." : "Révéler mon thème ✦"}
+          {isLoading ? "Alignement des astres..." : "Révéler mon thème ✦"}
         </Button>
       </div>
     </div>

@@ -31,10 +31,14 @@ const Horoscope = ({ onBack }) => {
   const { user } = useAuthContext();
   const { profile, loading } = useProfile(user?.id);
   
-  const signeSolaire = profile?.signe_solaire || "Bélier";
+  // FIX : On récupère le vrai signe solaire sans mettre de défaut "Bélier" ici
+  const signeSolaire = profile?.signe_solaire;
   
-  // Optimisation : Calcul de l'horoscope
-  const horoscope = useMemo(() => getHoroscopeComplet(signeSolaire), [signeSolaire]);
+  // On ne calcule l'horoscope que si on a le signe
+  const horoscope = useMemo(() => {
+    if (!signeSolaire) return null;
+    return getHoroscopeComplet(signeSolaire);
+  }, [signeSolaire]);
 
   const dateAujourdhui = useMemo(() => {
     return new Intl.DateTimeFormat('fr-FR', {
@@ -45,34 +49,51 @@ const Horoscope = ({ onBack }) => {
     }).format(new Date());
   }, []);
 
-  const domaines = [
-    {
-      label: "Amour",
-      texte: horoscope.amour.texte,
-      score: horoscope.amour.score,
-      couleur: "#C17B8A", // Rose poudré
-      icone: "♥"
-    },
-    {
-      label: "Travail",
-      texte: horoscope.travail.texte,
-      score: horoscope.travail.score,
-      couleur: "#7B9ECB", // Bleu serein
-      icone: "◆"
-    },
-    {
-      label: "Bien-être",
-      texte: horoscope.bienEtre.texte,
-      score: horoscope.bienEtre.score,
-      couleur: "#7BB8A0", // Vert sauge
-      icone: "●"
-    }
-  ];
+  // On prépare les domaines seulement si l'horoscope existe
+  const domaines = useMemo(() => {
+    if (!horoscope) return [];
+    return [
+      {
+        label: "Amour",
+        texte: horoscope.amour.texte,
+        score: horoscope.amour.score,
+        couleur: "#C17B8A",
+        icone: "♥"
+      },
+      {
+        label: "Travail",
+        texte: horoscope.travail.texte,
+        score: horoscope.travail.score,
+        couleur: "#7B9ECB",
+        icone: "◆"
+      },
+      {
+        label: "Bien-être",
+        texte: horoscope.bienEtre.texte,
+        score: horoscope.bienEtre.score,
+        couleur: "#7BB8A0",
+        icone: "●"
+      }
+    ];
+  }, [horoscope]);
 
+  // ÉCRAN DE CHARGEMENT
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-night">
-        <div className="text-gold font-serif italic animate-pulse">Lecture des astres...</div>
+        <div className="text-gold font-serif italic animate-pulse">Consultation des éphémérides...</div>
+      </div>
+    );
+  }
+
+  // ÉCRAN SI PAS DE PROFIL / PAS DE SIGNE
+  if (!signeSolaire || !horoscope) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-night px-8 text-center">
+        <p className="text-gold font-serif italic mb-4">Votre thème natal n'est pas encore calculé.</p>
+        <button onClick={onBack} className="text-muted text-xs uppercase tracking-widest border border-muted/30 px-4 py-2 rounded-full">
+          Retour
+        </button>
       </div>
     );
   }
@@ -94,25 +115,31 @@ const Horoscope = ({ onBack }) => {
         </div>
       </div>
 
-      {/* Section signe */}
+      {/* Section signe dynamique */}
       <div className="flex flex-col items-center py-6 border-y border-[#1C2040] my-4 relative overflow-hidden">
-        {/* Glow discret en fond */}
         <div className="absolute inset-0 bg-gold/5 blur-3xl rounded-full" />
         
         <span 
           className="text-5xl mb-2 text-gold relative z-10"
           style={{ fontVariantEmoji: 'text', WebkitFontVariantEmoji: 'text' }}
         >
-          {ZODIAC_SYMBOLS[signeSolaire]}
+          {ZODIAC_SYMBOLS[signeSolaire] || "✦"}
         </span>
         <h1 className="text-gold font-serif tracking-[2.5px] text-base uppercase relative z-10">{signeSolaire}</h1>
         <p className="text-[11px] text-muted mt-1 uppercase font-sans relative z-10 opacity-70">{ZODIAC_DATES[signeSolaire]}</p>
       </div>
 
-      {/* Citation / Message principal */}
+      {/* Phrase introductive */}
+      <div className="py-3">
+        <p className="text-[11px] text-muted/70 italic font-serif text-center leading-relaxed px-2">
+          Les transits de cette semaine traversent votre thème natal avec une certaine insistance. Pas d'urgence — mais quelque chose demande à être regardé en face.
+        </p>
+      </div>
+
+      {/* Message principal personnalisé */}
       <div className="py-4">
         <p className="italic font-serif text-sm text-cream leading-[1.9] mb-4 text-center px-2">
-          "{horoscope.message}"
+          « {horoscope.message} »
         </p>
       </div>
 
@@ -132,7 +159,7 @@ const Horoscope = ({ onBack }) => {
 
       {/* Label section */}
       <div className="flex items-center gap-2 mb-4">
-        <p className="text-[9px] text-muted tracking-[2px] uppercase font-sans whitespace-nowrap">Analyse par domaine</p>
+        <p className="text-[9px] text-muted tracking-[2px] uppercase font-sans whitespace-nowrap">Ce que murmurent les astres</p>
         <div className="h-px bg-[#1C2040] w-full" />
       </div>
 

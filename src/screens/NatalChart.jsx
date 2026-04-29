@@ -41,7 +41,11 @@ const INTERPRETATIONS = {
   "Mars_Capricorne": "Ton Mars en Capricorne est doté d'une endurance exceptionnelle. Tu gravis les montagnes du succès sans jamais faiblir."
 };
 
-const NatalChart = () => {
+/**
+ * NatalChart Screen
+ * @param {Function} onSeeNoeuds - Fonction de navigation vers l'écran des Nœuds Lunaires
+ */
+const NatalChart = ({ onSeeNoeuds }) => {
   const canvasRef = useRef(null);
   const [planeteSelectionnee, setPlaneteSelectionnee] = useState(null);
   const { user } = useAuthContext();
@@ -51,11 +55,8 @@ const NatalChart = () => {
 
   const getInterpretation = (p) => {
     if (!p || !p.nom || !p.signe) return "Une influence mystérieuse guide ton ciel.";
-    
-    // Nettoyage des accents et espaces pour correspondre aux clés de INTERPRETATIONS
     const nomClean = p.nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '');
     const signeClean = p.signe.split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '');
-    
     const key = `${nomClean}_${signeClean}`;
     return INTERPRETATIONS[key] || `Ton ${p.nom} en ${p.signe} apporte une vibration unique et personnelle à ton thème.`;
   };
@@ -105,13 +106,11 @@ const NatalChart = () => {
       const x = centre + 78 * Math.cos(angle);
       const y = centre + 78 * Math.sin(angle);
       
-      // Petit halo de lueur
       ctx.beginPath();
       ctx.arc(x, y, 11, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(201, 164, 96, 0.05)';
       ctx.fill();
 
-      // Corps de planète
       ctx.beginPath();
       ctx.arc(x, y, 10, 0, Math.PI * 2);
       ctx.fillStyle = '#0E1228';
@@ -125,7 +124,6 @@ const NatalChart = () => {
       ctx.fillText(p.symbole || '?', x, y);
     });
 
-    // Signature centrale
     ctx.fillStyle = '#C9A460';
     ctx.font = 'bold 8px sans-serif';
     ctx.fillText('ASTRA', centre, centre);
@@ -135,8 +133,9 @@ const NatalChart = () => {
   if (loading) return <div className="h-full flex items-center justify-center text-gold italic">Synchronisation...</div>;
 
   return (
-    <div className="w-full mx-auto px-5 pb-10">
-      <div className="text-center mb-6">
+    <div className="w-full mx-auto px-5 pb-24 h-full overflow-y-auto custom-scrollbar">
+      {/* Header Info */}
+      <div className="text-center mb-6 pt-6">
         <p className="text-[9px] text-muted tracking-[2px] uppercase mb-1">Thème Natal</p>
         <h3 className="font-serif text-base text-cream">{displayData.nom}</h3>
         <p className="text-[10px] text-muted mt-0.5 tracking-wider">
@@ -146,11 +145,13 @@ const NatalChart = () => {
         </p>
       </div>
 
+      {/* Astro Chart Visual */}
       <div className="flex justify-center bg-card/20 rounded-full p-4 border border-gold/10 relative">
         <div className="absolute inset-0 bg-gold/5 rounded-full blur-3xl opacity-20" />
         <canvas ref={canvasRef} className="relative z-10" />
       </div>
 
+      {/* Planet List */}
       <div className="mt-8 space-y-3">
         {positionsPlanetaires?.map((p, i) => (
           <div 
@@ -170,25 +171,45 @@ const NatalChart = () => {
         ))}
       </div>
 
+      {/* --- BOUTON NOEUDS LUNAIRES (Point d'entrée) --- */}
+      <div className="mt-10 mb-10">
+        <button 
+          onClick={onSeeNoeuds}
+          className="w-full group relative overflow-hidden bg-gradient-to-br from-[#120E22] to-[#1C2040] border border-gold/20 rounded-2xl p-6 transition-all hover:border-gold/50 active:scale-[0.98]"
+        >
+          <div className="flex items-center justify-between relative z-10">
+            <div className="text-left">
+              <p className="text-[9px] text-gold tracking-[3px] uppercase font-bold mb-1">Héritage Karmique</p>
+              <h4 className="text-cream font-serif text-base tracking-wide">Vos Nœuds Lunaires</h4>
+              <p className="text-[11px] text-muted/70 italic font-serif mt-1">Le fil invisible de votre destin</p>
+            </div>
+            <span className="text-gold/80 text-3xl transition-transform group-hover:translate-x-2 drop-shadow-[0_0_8px_rgba(201,164,96,0.3)]">☊</span>
+          </div>
+          {/* Subtle Glow Effect */}
+          <div className="absolute inset-0 bg-gold/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </button>
+      </div>
+
+      {/* Interpretation Modal */}
       {planeteSelectionnee && (
         <div 
-          className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300"
+          className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300"
           onClick={() => setPlaneteSelectionnee(null)}
         >
           <div 
-            className="bg-[#0E1228] border border-gold/30 rounded-2xl p-8 max-w-sm w-full text-center relative shadow-2xl shadow-gold/10"
+            className="bg-[#0E1228] border border-gold/30 rounded-3xl p-8 max-w-sm w-full text-center relative shadow-2xl shadow-gold/20"
             onClick={e => e.stopPropagation()}
           >
             <div className="text-6xl text-gold mb-4" style={{ fontVariantEmoji: 'text' }}>{planeteSelectionnee.symbole}</div>
             <h2 className="font-serif text-xl text-gold mb-1">{planeteSelectionnee.nom}</h2>
             <p className="text-muted text-[10px] uppercase tracking-widest mb-4">en {planeteSelectionnee.signe}</p>
             <div className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent mb-6" />
-            <p className="text-cream/90 text-sm leading-relaxed italic">
+            <p className="text-cream/90 text-sm leading-relaxed italic font-serif">
               "{getInterpretation(planeteSelectionnee)}"
             </p>
             <button 
               onClick={() => setPlaneteSelectionnee(null)}
-              className="mt-8 text-[10px] text-gold/50 uppercase tracking-[2px] border border-gold/20 px-8 py-2 rounded-full hover:bg-gold/10 transition-colors"
+              className="mt-8 text-[10px] text-gold/70 uppercase tracking-[2px] border border-gold/20 px-8 py-2.5 rounded-full hover:bg-gold/10 transition-colors"
             >
               Fermer
             </button>

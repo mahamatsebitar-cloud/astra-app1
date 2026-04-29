@@ -77,18 +77,17 @@ const Splash = ({ onStart, onLogin }) => {
           ASTRA
         </h1>
         <p className="text-[10px] text-gold tracking-[5px] uppercase mt-3 mb-16 opacity-80">
-          Votre ciel intérieur
+          Votre ciel, votre langue
         </p>
       </div>
 
       {/* Actions */}
       <div className="w-full space-y-4 px-8">
-        {/* On envoie vers onLogin pour forcer la création de compte/connexion avant tout */}
         <Button onClick={onLogin} variant="primary">
-          Commencer le voyage
+          Révéler mon thème
         </Button>
         <Button onClick={onLogin} variant="outline">
-          J'ai déjà un compte
+          Retrouver mon ciel
         </Button>
       </div>
 

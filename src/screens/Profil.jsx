@@ -1,9 +1,10 @@
 // src/screens/Profil.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../hooks/useAuth';
 import AstraSymbol from '../components/ui/AstraSymbol';
+import EditProfil from './EditProfil';
 
 const ZODIAC_SYMBOLS = {
   "Bélier": "♈", "Taureau": "♉", "Gémeaux": "♊", "Cancer": "♋",
@@ -11,21 +12,49 @@ const ZODIAC_SYMBOLS = {
   "Sagittaire": "♐", "Capricorne": "♑", "Verseau": "♒", "Poissons": "♓"
 };
 
+const TITRES_PROFIL = {
+  "Bélier": { masc: "Pionnier de l'aube", fem: "Pionnière de l'aube" },
+  "Taureau": { masc: "Gardien du vivant", fem: "Gardienne du vivant" },
+  "Gémeaux": { masc: "Tisseur de liens", fem: "Tisseuse de liens" },
+  "Cancer": { masc: "Mémoire du monde", fem: "Mémoire du monde" },
+  "Lion": { masc: "Flamme qui s'assume", fem: "Flamme qui s'assume" },
+  "Vierge": { masc: "Architecte du réel", fem: "Architecte du réel" },
+  "Balance": { masc: "Chercheur d'équilibre", fem: "Chercheure d'équilibre" },
+  "Scorpion": { masc: "Plongeur dans l'ombre", fem: "Plongeuse dans l'ombre" },
+  "Sagittaire": { masc: "Marcheur vers l'horizon", fem: "Marcheuse vers l'horizon" },
+  "Capricorne": { masc: "Bâtisseur patient", fem: "Bâtisseuse patiente" },
+  "Verseau": { masc: "Visionnaire solitaire", fem: "Visionnaire solitaire" },
+  "Poissons": { masc: "Nageur entre les mondes", fem: "Nageuse entre les mondes" }
+};
+
+const getGenreFromNom = (nom) => {
+  if (!nom) return 'fem';
+  const prenom = nom.split(' ')[0].toLowerCase();
+  const voyellesFinales = ['a', 'e', 'i', 'é', 'ée', 'ie', 'ne', 'le', 'ce', 'se', 'de', 'te'];
+  if (voyellesFinales.some(fin => prenom.endsWith(fin))) return 'fem';
+  return 'masc';
+};
+
+const getTitreProfil = (signe, nom) => {
+  const genre = getGenreFromNom(nom);
+  const titres = TITRES_PROFIL[signe] || TITRES_PROFIL["Verseau"];
+  return titres[genre] || titres.fem;
+};
+
 const Profil = ({ onLogout }) => {
   const { user } = useAuthContext();
-  const { profile, loading } = useProfile(user?.id);
+  const { profile, loading, refreshProfile } = useProfile(user?.id);
   const { logout, isLoading: isLoggingOut } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
 
-  // Optimisation Date : Évite le décalage d'un jour sur certains navigateurs
   const formatDate = (dateStr) => {
     if (!dateStr) return "Non renseignée";
     try {
-      // Utilisation d'un tableau pour éviter les problèmes d'interprétation de fuseau horaire
       const [year, month, day] = dateStr.split('-');
       const date = new Date(year, month - 1, day);
       return new Intl.DateTimeFormat('fr-FR', {
         day: 'numeric',
-        month: 'long', 
+        month: 'long',
         year: 'numeric'
       }).format(date);
     } catch {
@@ -45,6 +74,19 @@ const Profil = ({ onLogout }) => {
     }
   };
 
+  const handleEditBack = () => {
+    setIsEditing(false);
+    if (refreshProfile) {
+      refreshProfile();
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <EditProfil onBack={handleEditBack} />
+    );
+  }
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center bg-night">
@@ -58,15 +100,19 @@ const Profil = ({ onLogout }) => {
   const signeLunaire = profile?.signe_lunaire || "Lune";
   const ascendant = profile?.ascendant || "Ascendant";
   const avatarUrl = profile?.avatar_url;
+  const titreProfil = getTitreProfil(signeSolaire, displayNom);
 
   return (
     <div className="w-full space-y-6 pb-20 animate-in fade-in duration-500">
       {/* Header avec bouton Modifier discret */}
       <div className="flex justify-between items-center px-1">
         <h3 className="font-serif text-base text-cream">Mon Profil</h3>
-        <button className="text-gold text-[9px] uppercase tracking-widest hover:opacity-80 transition-opacity font-bold bg-gold/5 px-3 py-1 rounded-full border border-gold/10">
+        <span
+          onClick={() => setIsEditing(true)}
+          className="text-gold text-[10px] uppercase tracking-widest cursor-pointer hover:opacity-80 transition-opacity font-sans bg-gold/5 px-3 py-1 rounded-full border border-gold/10"
+        >
           Modifier
-        </button>
+        </span>
       </div>
 
       {/* Section Avatar & Identité */}
@@ -76,7 +122,7 @@ const Profil = ({ onLogout }) => {
             {avatarUrl ? (
               <img src={avatarUrl} alt={displayNom} className="w-full h-full object-cover" />
             ) : (
-              <span 
+              <span
                 className="text-gold"
                 style={{
                   fontFamily: 'serif',
@@ -93,10 +139,10 @@ const Profil = ({ onLogout }) => {
             ✦
           </div>
         </div>
-        
+
         <div className="text-center">
           <h2 className="font-serif text-xl text-cream tracking-wide">{displayNom}</h2>
-          <p className="text-muted text-[10px] tracking-[3px] uppercase mt-1 font-medium opacity-60">Élève de l'Univers</p>
+          <p className="text-muted text-[10px] tracking-[3px] uppercase mt-1 font-medium opacity-60">{titreProfil}</p>
         </div>
 
         {/* Badge "Big Three" Astro */}
@@ -122,7 +168,7 @@ const Profil = ({ onLogout }) => {
           <h4 className="text-muted text-[9px] tracking-[3px] uppercase font-bold">Données Natales</h4>
           <div className="h-px bg-gold/20 flex-1"></div>
         </div>
-        
+
         <div className="space-y-1">
           {[
             { label: 'Naissance', value: formatDate(profile?.date_naissance) },
@@ -173,7 +219,7 @@ const Profil = ({ onLogout }) => {
 
       {/* Bouton déconnexion épuré */}
       <div className="pt-4">
-        <button 
+        <button
           onClick={handleLogout}
           disabled={isLoggingOut}
           className="w-full text-muted hover:text-red-400/80 transition-all text-[10px] uppercase tracking-[4px] py-4 border border-white/5 rounded-xl bg-white/[0.01] disabled:opacity-30"

@@ -37,7 +37,7 @@ const Compatibilite = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [compatibilite, setCompatibilite] = useState(null);
   const [animBars, setAnimBars] = useState(false);
-  const [invitationStatus, setInvitationStatus] = useState(null); // 'success' | 'duplicate' | null
+  const [invitationStatus, setInvitationStatus] = useState(null);
 
   useEffect(() => {
     if (amiSelectionne && profile) {
@@ -109,7 +109,7 @@ const Compatibilite = () => {
         </button>
 
         <div className="space-y-1">
-          <p className="text-[10px] text-gold tracking-[0.2em] uppercase font-sans font-bold">Affinités Astrales</p>
+          <p className="text-[10px] text-gold tracking-[0.2em] uppercase font-sans font-bold">Résonances Célestes</p>
           <h3 className="text-xl font-serif text-cream">{ami.nom?.split(' ')[0]} & Toi</h3>
         </div>
 
@@ -134,7 +134,10 @@ const Compatibilite = () => {
             </div>
           </div>
           <div className="h-px bg-gradient-to-r from-transparent via-[#1C2040] to-transparent" />
-          <p className="italic text-cream/80 text-sm leading-relaxed font-serif text-center px-4">{compatibilite.citation}</p>
+          <p className="italic text-cream/80 text-sm leading-relaxed font-serif text-center px-4">« {compatibilite.citation} »</p>
+          <p className="text-muted text-[10px] italic text-center mt-2">
+            Un score n'est jamais une sentence. C'est une invitation à regarder où vous vous rencontrez vraiment.
+          </p>
         </div>
 
         <div className="space-y-4">
@@ -250,7 +253,7 @@ const Compatibilite = () => {
         <p className="text-[10px] text-muted tracking-widest uppercase font-bold">Tes connexions</p>
         {friends.length === 0 ? (
           <div className="text-center py-16 border border-dashed border-border rounded-3xl opacity-50">
-            <p className="text-muted font-serif italic text-sm">"Le ciel est vaste, ne le traversez pas seul."</p>
+            <p className="text-muted font-serif italic text-sm">« Le ciel est vaste, ne le traversez pas seul. »</p>
           </div>
         ) : (
           <div className="grid gap-3">

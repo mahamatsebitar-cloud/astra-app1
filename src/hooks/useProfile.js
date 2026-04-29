@@ -6,6 +6,7 @@ export function useProfile(userId) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const fetchProfile = useCallback(async () => {
     if (!userId) {
@@ -30,7 +31,11 @@ export function useProfile(userId) {
 
   useEffect(() => {
     fetchProfile();
-  }, [fetchProfile]);
+  }, [fetchProfile, refreshTrigger]);
+
+  const refreshProfile = useCallback(() => {
+    setRefreshTrigger(t => t + 1);
+  }, []);
 
   async function handleSaveProfile(profileData) {
     setError(null);
@@ -91,6 +96,6 @@ export function useProfile(userId) {
     error,
     saveProfile: handleSaveProfile,
     updateProfile: handleUpdateProfile,
-    refreshProfile: fetchProfile,
+    refreshProfile,
   };
 }

@@ -1,13 +1,14 @@
 // src/data/astroData.js
 
 /**
- * ARCHIVE DE DONNÉES ASTRA - CONFIGURATION OPTIMISÉE 2026
+ * ARCHIVE DE DONNÉES ASTRA — CONFIGURATION 2026
  * Ce fichier centralise les données de test et les structures de secours.
+ * Ton : littéraire, introspectif, jamais cosmopolite.
  */
 
 export const userData = {
   nom: "Léa Moreau",
-  dateNaissance: "1997-01-25", // Format ISO pour la stabilité des calculs
+  dateNaissance: "1997-01-25",
   heureNaissance: "07:30",
   lieu: "Paris, France",
   signeSolaire: "Verseau",
@@ -21,22 +22,22 @@ export const planetesDuJour = [
     symbole: "☿",
     nom: "Mercure",
     signe: "Taureau",
-    aspect: "Rétrograde — ta communication intérieure s'affine, prends le temps de peser tes mots.",
-    couleur: "#C9A460" // Gold
+    aspect: "En rétrogradation — les mots que tu gardes ont peut-être plus de valeur que ceux que tu prononces.",
+    couleur: "#C9A460"
   },
   {
     symbole: "♀",
     nom: "Vénus",
     signe: "Bélier",
-    aspect: "Conjonction à Uranus — une étincelle inattendue peut bousculer ton cœur, reste ouverte.",
-    couleur: "#E29797" // Rose
+    aspect: "Proche d'Uranus — quelque chose d'imprévu traverse ta vie affective. Laisse-le passer avant de décider ce qu'il signifie.",
+    couleur: "#E29797"
   },
   {
     symbole: "♂",
     nom: "Mars",
     signe: "Sagittaire",
-    aspect: "Trigone au Soleil — ta vitalité est au zénith, canalise cette fougue avec grâce.",
-    couleur: "#C15F5F" // Rouge sourd
+    aspect: "En harmonie avec le Soleil — ta vitalité connaît un sommet. La fougue n'est pas un défaut, c'est une matière à sculpter.",
+    couleur: "#C15F5F"
   }
 ];
 
@@ -86,7 +87,7 @@ export const horoscopeDomaines = [
     couleur: "rose",
     score: 4,
     scoreMax: 5,
-    texte: "Une déclaration inattendue pourrait surgir. L'audace de Vénus en Bélier réveille tes sentiments les plus spontanés."
+    texte: "Une déclaration pourrait surgir là où tu ne l'attends pas. Vénus en Bélier ne connaît pas la prudence — et c'est peut-être une chance."
   },
   {
     label: "TRAVAIL",
@@ -94,7 +95,7 @@ export const horoscopeDomaines = [
     couleur: "bleu",
     score: 3,
     scoreMax: 5,
-    texte: "Mercure rétrograde ralentit les échanges, mais t'invite à peaufiner un projet en coulisses. Patience, Verseau."
+    texte: "Mercure ralentit les échanges visibles, mais affine ce qui se trame en silence. Les coulisses ont leur propre vérité."
   },
   {
     label: "BIEN-ÊTRE",
@@ -102,6 +103,6 @@ export const horoscopeDomaines = [
     couleur: "vert",
     score: 5,
     scoreMax: 5,
-    texte: "Mars en harmonie avec ton Soleil décuple ton énergie vitale. Danse, marche, respire : ton corps te remerciera."
+    texte: "Mars accordé à ton Soleil — ton corps sait des choses que ton esprit ignore encore. Danse, marche, respire : il te parlera."
   }
 ];
