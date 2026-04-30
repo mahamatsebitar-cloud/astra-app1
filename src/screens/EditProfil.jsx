@@ -57,7 +57,8 @@ export default function EditProfil({ onBack }) {
       // Recalcul des données astronomiques basé sur les nouvelles entrées
       const signeSolaire = getSigneSolaire(dateNaissance);
       const signeLunaire = getSigneLunaire(dateNaissance);
-      const ascendant = getAscendant(cleanTime, lieuNaissance || 'Non spécifié');
+      // Latitude par défaut Paris si lieu non géocodé
+      const ascendant = getAscendant(cleanTime, 48.8566);
       
       const { error: updateError } = await updateProfile(user.id, {
         nom,
@@ -91,7 +92,7 @@ export default function EditProfil({ onBack }) {
 
   // Calculs en temps réel pour la prévisualisation visuelle
   const previewSigne = dateNaissance ? getSigneSolaire(dateNaissance) : null;
-  const previewAsc = (dateNaissance && heureNaissance) ? getAscendant(heureNaissance, lieuNaissance) : null;
+  const previewAsc = (dateNaissance && heureNaissance) ? getAscendant(heureNaissance, 48.8566) : null;
   const previewLune = dateNaissance ? getSigneLunaire(dateNaissance) : null;
 
   return (

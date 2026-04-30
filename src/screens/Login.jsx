@@ -16,11 +16,15 @@ const Login = ({ onSuccess }) => {
     setError(null);
 
     if (isRegister) {
-      const { data, error: err } = await signUp(email, password, nom);
+      const { data, error: err } = await signUp(email, password, {
+        nom: nom,
+        date_naissance: null,
+        heure_naissance: null,
+        lieu_naissance: null
+      });
       if (err) {
         setError(err.message);
       } else {
-        // Sauvegarde de l'ID pour l'onboarding au cas où le contexte est lent
         if (data?.userId) {
           localStorage.setItem('astra_pending_userId', data.userId);
         }

@@ -80,7 +80,6 @@ export async function startTrial(userId) {
   return { data, error };
 }
 
-// FIX : Ajout de la fonction manquante
 export async function cancelSubscription(userId) {
   try {
     const { data, error } = await supabase
@@ -108,7 +107,6 @@ export async function cancelSubscription(userId) {
   }
 }
 
-// FIX : Ajout de la fonction manquante
 export async function activateGooglePlaySubscription(userId, purchaseToken) {
   try {
     const expiryDate = new Date();

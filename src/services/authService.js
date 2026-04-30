@@ -1,5 +1,6 @@
 // src/services/authService.js
 import { supabase } from '../lib/supabase';
+import { getSigneSolaire, getSigneLunaire, getAscendant } from './astroService';
 
 /**
  * Inscrit un utilisateur avec ses données natales complètes
@@ -19,6 +20,14 @@ export async function signUp(email, password, userData) {
     const userId = data.user?.id;
     
     if (userId) {
+      // Calcul automatique des signes astrologiques
+      const signeSolaire = userData.date_naissance 
+        ? getSigneSolaire(userData.date_naissance) : null;
+      const signeLunaire = userData.date_naissance 
+        ? getSigneLunaire(userData.date_naissance) : null;
+      const ascendant = userData.heure_naissance 
+        ? getAscendant(userData.heure_naissance) : null;
+
       // On enregistre TOUTES les données collectées dans le formulaire
       const { error: profileError } = await supabase.from('profiles').upsert({ 
         id: userId, 
@@ -27,6 +36,9 @@ export async function signUp(email, password, userData) {
         date_naissance: userData.date_naissance,
         heure_naissance: userData.heure_naissance,
         lieu_naissance: userData.lieu_naissance,
+        signe_solaire: signeSolaire,
+        signe_lunaire: signeLunaire,
+        ascendant: ascendant,
         updated_at: new Date()
       });
 

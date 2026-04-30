@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Card from '../components/ui/Card';
 import PremiumGate from '../components/ui/PremiumGate';
 import { useFriends } from '../hooks/useFriends';
@@ -12,9 +12,9 @@ const ZODIAC_SYMBOLS = {
 };
 
 const getScoreColor = (score) => {
-  if (score >= 80) return '#5CAE8A'; // Vert émeraude
-  if (score >= 60) return '#C9A460'; // Or
-  return '#C17B8A'; // Rose mystique
+  if (score >= 80) return '#5CAE8A';
+  if (score >= 60) return '#C9A460';
+  return '#C17B8A';
 };
 
 const Compatibilite = ({ onUpgrade }) => {
@@ -36,8 +36,16 @@ const Compatibilite = ({ onUpgrade }) => {
   const [showSearch, setShowSearch] = useState(false);
   const [animBars, setAnimBars] = useState(false);
   const [invitationStatus, setInvitationStatus] = useState(null);
+  
+  const scrollRef = useRef(null);
 
-  // Déclenchement de l'animation à l'ouverture du détail
+  // Reset scroll quand on change de vue (liste ↔ détail)
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo(0, 0);
+    }
+  }, [amiSelectionne]);
+
   useEffect(() => {
     if (amiSelectionne) {
       setAnimBars(false);
@@ -82,7 +90,7 @@ const Compatibilite = ({ onUpgrade }) => {
     const dashOffset = circonference - (comp.global / 100) * circonference;
 
     return (
-      <div className="w-full min-h-screen space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 px-4">
+      <div ref={scrollRef} className="w-full space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 px-4">
         <button
           onClick={() => setAmiSelectionne(null)}
           className="text-muted text-xs uppercase tracking-widest flex items-center gap-2 py-6 active:opacity-50 transition-all font-bold"
@@ -179,7 +187,7 @@ const Compatibilite = ({ onUpgrade }) => {
 
   // Vue Liste des Alliances (Défaut)
   return (
-    <div className="w-full min-h-screen space-y-8 pb-24 px-4 animate-in fade-in duration-700">
+    <div ref={scrollRef} className="w-full space-y-8 pb-24 px-4 animate-in fade-in duration-700">
       <header className="flex justify-between items-end pt-8">
         <div className="space-y-1">
           <p className="text-[10px] text-gold tracking-[0.4em] uppercase font-black">Astra Network</p>

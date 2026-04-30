@@ -20,6 +20,13 @@ import Profil from './screens/Profil';
 import NoeudLunaire from './screens/NoeudLunaire';
 import Abonnement from './screens/Abonnement';
 
+// Écrans publics accessibles sans authentification
+const PUBLIC_SCREENS = ['splash', 'login', 'onb1', 'onb2', 'onb3', 'loading_theme', 'onbInvit'];
+// Écrans de l'onboarding (pour éviter les boucles)
+const ONBOARDING_SCREENS = ['onb1', 'onb2', 'onb3', 'loading_theme', 'onbInvit'];
+// Écrans protégés (nécessitent authentification + profil complet)
+const PROTECTED_SCREENS = ['home', 'natal', 'horoscope', 'compat', 'profil', 'noeud_lunaire', 'abonnement'];
+
 const AppContent = () => {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const { profile, loading: profileLoading } = useProfile(user?.id);
@@ -27,41 +34,61 @@ const AppContent = () => {
   const [currentScreen, setCurrentScreen] = useState('loading');
   const [activeTab, setActiveTab] = useState('home');
   const [previousScreen, setPreviousScreen] = useState('home');
+  const [onboardingData, setOnboardingData] = useState({
+    dateNaissance: '',
+    heure: '12:00',
+    ville: 'Paris, France'
+  });
   
   const scrollRef = useRef(null);
 
-  // Scroll Reset à chaque changement d'écran
+  // Scroll Reset à chaque changement d'écran — double sécurité
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo(0, 0);
+      // Double sécurité : après le rendu de l'animation
+      const timer = setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTo(0, 0);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [currentScreen]);
 
+  // Navigation intelligente : redirige selon l'état d'authentification
   useEffect(() => {
     if (authLoading || profileLoading) return;
 
-    if (isAuthenticated) {
-      // Si l'user est connecté et a un profil complet
-      if (profile && (profile.onboarding_completed || profile.signe_solaire)) {
-        const gatewayScreens = ['loading', 'splash', 'login', 'onb1', 'onb2', 'onb3', 'loading_theme', 'onbInvit'];
-        
-        if (gatewayScreens.includes(currentScreen)) {
-          setCurrentScreen('home');
-          setActiveTab('home');
-        }
-      } 
-      else {
-        // Redirection vers l'onboarding si profil incomplet
-        const onboardingScreens = ['onb1', 'onb2', 'onb3', 'loading_theme', 'onbInvit'];
-        if (!onboardingScreens.includes(currentScreen)) {
-          setCurrentScreen('onb1');
-        }
+    // CAS 1 : Utilisateur AUTHENTIFIÉ avec profil COMPLET
+    if (isAuthenticated && profile && (profile.onboarding_completed || profile.signe_solaire)) {
+      // Si on est sur un écran public ou d'onboarding → rediriger vers home
+      if (PUBLIC_SCREENS.includes(currentScreen) || currentScreen === 'loading') {
+        setCurrentScreen('home');
+        setActiveTab('home');
       }
-    } else {
-      // Non authentifié
-      if (currentScreen !== 'splash' && currentScreen !== 'login') {
+      // Sinon, laisser l'utilisateur sur son écran actuel (profil, horoscope, etc.)
+      return;
+    }
+
+    // CAS 2 : Utilisateur AUTHENTIFIÉ mais profil INCOMPLET (en cours d'onboarding)
+    if (isAuthenticated && (!profile || (!profile.onboarding_completed && !profile.signe_solaire))) {
+      // Si on n'est PAS déjà dans l'onboarding → rediriger vers onb1
+      if (!ONBOARDING_SCREENS.includes(currentScreen) && currentScreen !== 'loading') {
+        setCurrentScreen('onb1');
+      }
+      // Si on est déjà dans l'onboarding → laisser continuer
+      return;
+    }
+
+    // CAS 3 : Utilisateur NON AUTHENTIFIÉ
+    if (!isAuthenticated) {
+      // Si on est sur un écran protégé → rediriger vers splash
+      if (PROTECTED_SCREENS.includes(currentScreen)) {
         setCurrentScreen('splash');
       }
+      // Si on est déjà sur splash, login ou onboarding → laisser l'utilisateur tranquille
+      return;
     }
   }, [authLoading, profileLoading, isAuthenticated, profile, currentScreen]);
 
@@ -97,17 +124,33 @@ const AppContent = () => {
       case 'splash':
         return <Splash onStart={() => setCurrentScreen('onb1')} onLogin={() => setCurrentScreen('login')} />;
       case 'login':
-        return <Login onSuccess={() => {}} />;
+        return <Login onSuccess={() => {
+          setCurrentScreen('home');
+          setActiveTab('home');
+        }} />;
       case 'onb1':
-        return <Onboarding1 onNext={() => setCurrentScreen('onb2')} />;
+        return <Onboarding1 onNext={(date) => {
+          setOnboardingData(prev => ({...prev, dateNaissance: date}));
+          setCurrentScreen('onb2');
+        }} />;
       case 'onb2':
-        return <Onboarding2 onNext={() => setCurrentScreen('onb3')} />;
+        return <Onboarding2 onNext={(heure) => {
+          setOnboardingData(prev => ({...prev, heure}));
+          setCurrentScreen('onb3');
+        }} />;
       case 'onb3':
-        return <Onboarding3 onFinish={() => setCurrentScreen('loading_theme')} />;
+        return <Onboarding3 
+          dateNaissance={onboardingData.dateNaissance}
+          heure={onboardingData.heure}
+          onFinish={() => setCurrentScreen('loading_theme')} 
+        />;
       case 'loading_theme':
         return <LoadingTheme onComplete={() => setCurrentScreen('onbInvit')} signeSolaire={profile?.signe_solaire} />;
       case 'onbInvit':
-        return <OnboardingInvit onFinish={() => handleTabChange('home')} userNom={profile?.nom || "Voyageur"} signeSolaire={profile?.signe_solaire || "Lion"} />;
+        return <OnboardingInvit onFinish={() => {
+          setCurrentScreen('home');
+          setActiveTab('home');
+        }} userNom={profile?.nom || "Voyageur"} signeSolaire={profile?.signe_solaire || "Lion"} />;
       case 'home':
         return <Home onHoroscope={() => handleTabChange('horoscope')} onProfil={() => handleTabChange('profil')} />;
       case 'natal':
@@ -138,11 +181,15 @@ const AppContent = () => {
           <motion.div
             key={currentScreen}
             ref={scrollRef}
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="w-full h-full overflow-y-auto custom-scrollbar"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            className="w-full h-full overflow-y-auto"
+            style={{ 
+              scrollBehavior: 'smooth',
+              WebkitOverflowScrolling: 'touch'
+            }}
           >
             {renderScreen()}
           </motion.div>

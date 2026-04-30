@@ -72,6 +72,13 @@ export function useSubscription() {
     return res;
   }, [user?.id, loadSubscription]);
 
+  const cancelSubscription = useCallback(async () => {
+    if (!user?.id) return;
+    const res = await cancelSubscriptionService(user.id);
+    if (!res.error) await loadSubscription();
+    return res;
+  }, [user?.id, loadSubscription]);
+
   const checkFeature = useCallback(async (key) => {
     if (!user?.id) return false;
     return await hasFeatureAccess(user.id, key);
@@ -88,6 +95,7 @@ export function useSubscription() {
     daysRemaining,
     planLabel,
     startTrial,
+    cancelSubscription,
     checkFeature,
     refreshSubscription: loadSubscription
   };

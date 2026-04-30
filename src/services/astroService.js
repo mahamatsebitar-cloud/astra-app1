@@ -1,5 +1,4 @@
 // src/services/astroService.js
-import * as base from 'astronomia/base';
 import dayjs from 'dayjs';
 
 const SIGNES = [
@@ -9,6 +8,18 @@ const SIGNES = [
 ];
 
 const ASPECTS_TEXTE = {
+  "Soleil_Bélier": "Le Soleil en Bélier embrase ton énergie vitale. C'est le moment d'oser et d'initier.",
+  "Soleil_Taureau": "Le Soleil en Taureau t'ancre dans une stabilité rayonnante. Cultive la patience féconde.",
+  "Soleil_Gémeaux": "Le Soleil en Gémeaux illumine ta curiosité. Les connexions et les idées abondent.",
+  "Soleil_Cancer": "Le Soleil en Cancer éclaire ton foyer intérieur. L'intuition guide tes pas aujourd'hui.",
+  "Soleil_Lion": "Le Soleil est chez lui en Lion. Ta créativité et ton charisme sont décuplés.",
+  "Soleil_Vierge": "Le Soleil en Vierge affine ton discernement. L'ordre et le soin magnifient ta journée.",
+  "Soleil_Balance": "Le Soleil en Balance harmonise tes relations. La beauté et l'équité t'inspirent.",
+  "Soleil_Scorpion": "Le Soleil en Scorpion révèle les vérités cachées. Ta puissance intérieure se déploie.",
+  "Soleil_Sagittaire": "Le Soleil en Sagittaire élargit tes horizons. L'aventure et la sagesse t'appellent.",
+  "Soleil_Capricorne": "Le Soleil en Capricorne éclaire tes ambitions. La discipline construit ton succès.",
+  "Soleil_Verseau": "Le Soleil en Verseau libère ton originalité. L'innovation guide tes actions.",
+  "Soleil_Poissons": "Le Soleil en Poissons ouvre ton imaginaire. La compassion t'enveloppe aujourd'hui.",
   "Mercure_Bélier": "Ton esprit s'enflamme, les idées fusent sans filtre.",
   "Mercure_Taureau": "Ta pensée s'ancre dans le concret, chaque mot a du poids.",
   "Mercure_Gémeaux": "Ta communication intérieure s'affine, prends le temps de peser tes mots.",
@@ -72,7 +83,7 @@ const ASPECTS_TEXTE = {
   "Lune_Bélier": "Tes émotions sont une tempête de feu, accueille cette intensité.",
   "Lune_Taureau": "La douceur lunaire apaise ton âme dans un écrin de soie.",
   "Lune_Gémeaux": "Les émotions papillonnent, curieuses et changeantes.",
-  "Lune_Cancer": "Le marée émotionnelle est haute, retourne à ta coquille sacrée.",
+  "Lune_Cancer": "La marée émotionnelle est haute, retourne à ta coquille sacrée.",
   "Lune_Lion": "Ton cœur rayonne, les sentiments s'expriment avec éclat.",
   "Lune_Vierge": "L'émotion s'ordonne, trouve le calme dans les rituels.",
   "Lune_Balance": "La paix intérieure se négocie, cherche l'harmonie des cœurs.",
@@ -84,11 +95,6 @@ const ASPECTS_TEXTE = {
 };
 
 // --- LOGIQUE DE CALCUL ---
-
-const normalizeKey = (str) => {
-  if (!str) return "";
-  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-};
 
 export const getSigneSolaire = (dateStr) => {
   if (!dateStr) return "Bélier";
@@ -113,11 +119,10 @@ export const getSigneSolaire = (dateStr) => {
 export const getSigneLunaire = (dateStr) => {
   if (!dateStr) return "Taureau";
   try {
-    const date = new Date(dateStr);
-    const jde = base.JDE.fromDate(date);
+    const date = new Date(dateStr + 'T12:00:00');
+    const ref = new Date('2000-01-06T12:00:00');
+    const diff = (date - ref) / (1000 * 60 * 60 * 24);
     const cycle = 27.321582;
-    const refJDE = 2451549.5; 
-    const diff = jde - refJDE;
     const position = ((diff % cycle) + cycle) % cycle;
     const index = Math.floor(position / (cycle / 12));
     return SIGNES[index] || "Taureau";
@@ -149,6 +154,7 @@ export const getPlanetesDuJour = () => {
   const joursEcoules = Math.floor((aujourd_hui - refDate) / 86400000);
 
   const planetesConfig = [
+    { symbole: "☉", nom: "Soleil", posRefIndex: 0, joursParSigne: 30, couleur: "#C9A460" },
     { symbole: "☿", nom: "Mercure", posRefIndex: 8, joursParSigne: 7.3, couleur: "#9B97B0" },
     { symbole: "♀", nom: "Vénus", posRefIndex: 10, joursParSigne: 18.7, couleur: "#C17B8A" },
     { symbole: "♂", nom: "Mars", posRefIndex: 8, joursParSigne: 57.2, couleur: "#E05C5C" },
@@ -160,20 +166,16 @@ export const getPlanetesDuJour = () => {
   return planetesConfig.map(p => {
     let index;
     if (p.nom === "Lune") {
-      try {
-        const jde = base.JDE.fromDate(aujourd_hui);
-        const cycle = 27.321582;
-        const diff = jde - 2451549.5;
-        index = Math.floor((((diff % cycle) + cycle) % cycle) / (cycle / 12));
-      } catch (e) {
-        index = 0;
-      }
+      const ref = new Date('2000-01-06T12:00:00');
+      const diff = (aujourd_hui - ref) / (1000 * 60 * 60 * 24);
+      const cycle = 27.321582;
+      index = Math.floor((((diff % cycle) + cycle) % cycle) / (cycle / 12));
     } else {
       index = (p.posRefIndex + Math.floor(joursEcoules / p.joursParSigne)) % 12;
     }
 
     const signe = SIGNES[index] || "Bélier";
-    const key = `${p.nom}_${normalizeKey(signe)}`;
+    const key = `${p.nom}_${signe}`;
     const aspect = ASPECTS_TEXTE[key] || `${p.nom} en ${signe} influence ta journée avec subtilité.`;
 
     return {
@@ -188,6 +190,6 @@ export const getPlanetesDuJour = () => {
 };
 
 export const getAspectTexte = (planete, signe) => {
-  const key = `${planete}_${normalizeKey(signe)}`;
+  const key = `${planete}_${signe}`;
   return ASPECTS_TEXTE[key] || `${planete} en ${signe} — une influence à explorer.`;
 };

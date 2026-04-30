@@ -13,8 +13,14 @@ const Onboarding1 = ({ onNext }) => {
   ];
   const years = Array.from({ length: 80 }, (_, i) => 2026 - i);
 
-  // Vérifie si les trois champs sont remplis
   const isValid = day !== "" && month !== "" && year !== "";
+
+  const handleNext = () => {
+    if (!isValid) return;
+    const monthIndex = months.indexOf(month) + 1;
+    const dateISO = `${year}-${String(monthIndex).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    onNext(dateISO);
+  };
 
   return (
     <div className="flex flex-col items-center">
@@ -45,7 +51,6 @@ const Onboarding1 = ({ onNext }) => {
         <svg width="80" height="60" viewBox="0 0 80 60" fill="none">
           <circle cx="40" cy="30" r="22" stroke="var(--color-gold)" strokeWidth="0.5" strokeDasharray="2 2" />
           <circle cx="40" cy="30" r="18" stroke="var(--color-gold)" strokeWidth="1" fill="none" />
-          {/* Ajout de la classe astro-symbol pour le rendu sur mobile */}
           <text x="40" y="36" textAnchor="middle" fontSize="18" fill="var(--color-gold)" className="font-serif astro-symbol">
             ♒
           </text>
@@ -82,9 +87,9 @@ const Onboarding1 = ({ onNext }) => {
         </select>
       </div>
 
-      {/* Bouton Suivant - Gestion de l'état activé/désactivé */}
+      {/* Bouton Suivant */}
       <Button 
-        onClick={isValid ? onNext : undefined} 
+        onClick={handleNext} 
         disabled={!isValid}
         className={`transition-all duration-300 ${
           !isValid 

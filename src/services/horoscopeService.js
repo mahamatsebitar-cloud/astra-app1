@@ -7,7 +7,23 @@ import dayjs from 'dayjs';
  */
 const normalizeSigne = (signe) => {
   if (!signe) return "Bélier";
-  return signe.charAt(0).toUpperCase() + signe.slice(1).toLowerCase();
+  const map = {
+    "belier": "Bélier",
+    "taureau": "Taureau",
+    "gemeaux": "Gémeaux",
+    "cancer": "Cancer",
+    "lion": "Lion",
+    "vierge": "Vierge",
+    "balance": "Balance",
+    "scorpion": "Scorpion",
+    "sagittaire": "Sagittaire",
+    "capricorne": "Capricorne",
+    "verseau": "Verseau",
+    "poissons": "Poissons"
+  };
+  const key = signe.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return map[key] || signe;
 };
 
 /**

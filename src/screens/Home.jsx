@@ -10,11 +10,13 @@ import { getHoroscopeComplet } from '../services/horoscopeService';
 import { getPlanetesDuJour } from '../services/astroService';
 import { getSaintDuJour, getPhaseLunaire, getSaisonActuelle } from '../data/identiteFrancaise';
 
-// Banques de messages universels (Saisons)
-import { MESSAGES_PRINTEMPS } from '../data/messagesPrintemps';
-import { MESSAGES_ETE } from '../data/messagesEte';
-import { MESSAGES_AUTOMNE } from '../data/messagesAutomne';
-import { MESSAGES_HIVER } from '../data/messagesHiver';
+// Banques de messages universels (Saisons) - lazy loading par saison
+const MESSAGES_SAISONNIERS = {
+  printemps: () => import('../data/messagesPrintemps'),
+  ete: () => import('../data/messagesEte'),
+  automne: () => import('../data/messagesAutomne'),
+  hiver: () => import('../data/messagesHiver'),
+};
 
 const ZODIAC_SYMBOLS = {
   "Bélier": "♈", "Taureau": "♉", "Gémeaux": "♊", "Cancer": "♋",
@@ -26,27 +28,68 @@ const INFOS_MOUVEMENTS = {
   "Soleil": "Le Soleil illumine votre secteur actuel, apportant vitalité et clarté à vos projets personnels.",
   "Lune": "La Lune influence votre intuition et vos marées émotionnelles. Écoutez votre ressenti aujourd'hui.",
   "Mercure": "Mercure régit vos échanges. C'est le moment idéal pour clarifier un malentendu ou signer un contrat.",
-  "Venus": "Vénus adoucit vos relations et favorise l'harmonie esthétique autour de vous.",
+  "Vénus": "Vénus adoucit vos relations et favorise l'harmonie esthétique autour de vous.",
   "Mars": "Mars vous donne l'énergie d'agir. Ne dispersez pas votre force, ciblez vos objectifs.",
   "Jupiter": "Jupiter apporte une touche de chance et d'expansion. Voyez grand !",
   "Saturne": "Saturne demande de la structure et de la patience. Les efforts d'aujourd'hui sont les succès de demain.",
 };
 
+// Cache et fallback pour les messages
+let cachedMessage = "Les astres murmurent à votre âme aujourd'hui.";
+
 /**
- * MESSAGE UNIVERSEL (Pensée du jour) - Identique pour tous
+ * MESSAGE UNIVERSEL (Pensée du jour) - Lazy loading par saison
  */
 const getMessageUniverselSaisonnier = () => {
-  const now = new Date();
-  const mois = now.getMonth() + 1; 
-  const jourCle = `${String(mois).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const maintenant = new Date();
+  const mois = maintenant.getMonth() + 1;
+  const jour = maintenant.getDate();
 
-  let dictionnaire;
-  if ([3, 4, 5].includes(mois)) dictionnaire = MESSAGES_PRINTEMPS;
-  else if ([6, 7, 8].includes(mois)) dictionnaire = MESSAGES_ETE;
-  else if ([9, 10, 11].includes(mois)) dictionnaire = MESSAGES_AUTOMNE;
-  else dictionnaire = MESSAGES_HIVER;
+  // Mapping saison -> clé du dictionnaire
+  let saisonKey;
+  if ([3, 4, 5].includes(mois)) saisonKey = 'printemps';
+  else if ([6, 7, 8].includes(mois)) saisonKey = 'ete';
+  else if ([9, 10, 11].includes(mois)) saisonKey = 'automne';
+  else saisonKey = 'hiver';
 
-  return dictionnaire[jourCle] || Object.values(dictionnaire)[0] || "Suivez votre étoile.";
+  // Initialiser le cache
+  if (!getMessageUniverselSaisonnier.cache) {
+    getMessageUniverselSaisonnier.cache = {};
+  }
+
+  // Si déjà en cache, retourner le message
+  if (getMessageUniverselSaisonnier.cache[saisonKey]) {
+    const messages = getMessageUniverselSaisonnier.cache[saisonKey];
+    const cleJour = `${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`;
+    const message = messages[cleJour];
+    if (typeof message === 'string') {
+      cachedMessage = message;
+      return message;
+    }
+    return cachedMessage;
+  }
+
+  // Lazy load le module
+  MESSAGES_SAISONNIERS[saisonKey]().then(module => {
+    let messages = module.default || module;
+    // Gérer les exports nommés (MESSAGES_PRINTEMPS, MESSAGES_ETE, etc.)
+    if (messages.MESSAGES_PRINTEMPS) messages = messages.MESSAGES_PRINTEMPS;
+    else if (messages.MESSAGES_ETE) messages = messages.MESSAGES_ETE;
+    else if (messages.MESSAGES_AUTOMNE) messages = messages.MESSAGES_AUTOMNE;
+    else if (messages.MESSAGES_HIVER) messages = messages.MESSAGES_HIVER;
+    
+    getMessageUniverselSaisonnier.cache[saisonKey] = messages;
+    
+    const cleJour = `${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`;
+    const message = messages[cleJour];
+    if (typeof message === 'string') {
+      cachedMessage = message;
+    }
+  }).catch(() => {
+    // Silencieux - garde le fallback
+  });
+
+  return cachedMessage;
 };
 
 const Home = ({ onHoroscope, onProfil }) => {
@@ -198,7 +241,7 @@ const Home = ({ onHoroscope, onProfil }) => {
 
       {/* Modal Planète */}
       {selectedPlanet && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-6" onClick={() => setSelectedPlanet(null)}>
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-6" onClick={() => setSelectedPlanet(null)}>
           <div className="bg-[#0E1228] border border-gold/30 rounded-2xl p-8 max-w-sm w-full text-center" onClick={e => e.stopPropagation()}>
             <div className="mb-4 flex justify-center">
                <PlanetCircle size="lg" symbole={selectedPlanet.symbole} couleur={selectedPlanet.couleur} />

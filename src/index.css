@@ -46,3 +46,9 @@ body {
   animation: fadeSlideUp 0.7s ease forwards;
   opacity: 0;
 }
+
+/* Dans ton fichier CSS global */
+.custom-scrollbar {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}

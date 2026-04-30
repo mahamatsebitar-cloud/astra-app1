@@ -1,13 +1,13 @@
 // src/screens/NatalChart.jsx
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
-import { positionsPlanetaires, userData } from '../data/astroData';
+import { getPlanetesDuJour } from '../services/astroService';
 
 const INTERPRETATIONS = {
-  "Soleil_Belier": "Ton Soleil en Bélier fait de toi une âme de pionnier. Tu avances sans regarder en arrière, porté par une flamme intérieure que rien ne semble pouvoir éteindre.",
+  "Soleil_Bélier": "Ton Soleil en Bélier fait de toi une âme de pionnier. Tu avances sans regarder en arrière, porté par une flamme intérieure que rien ne semble pouvoir éteindre.",
   "Soleil_Taureau": "Ton Soleil en Taureau t'ancre dans le monde sensible avec une puissance rare. Tu sais que la beauté sauvera le monde et tu la cultives patiemment.",
-  "Soleil_Gemeaux": "Ton Soleil en Gémeaux fait de ton esprit un papillon curieux qui butine les idées. Tu es né pour communiquer, relier et transmettre.",
+  "Soleil_Gémeaux": "Ton Soleil en Gémeaux fait de ton esprit un papillon curieux qui butine les idées. Tu es né pour communiquer, relier et transmettre.",
   "Soleil_Cancer": "Ton Soleil en Cancer fait de toi un être lunaire, sensible aux marées invisibles de l'âme. Ta maison intérieure est un sanctuaire précieux.",
   "Soleil_Lion": "Ton Soleil en Lion brille d'un éclat solaire qui attire naturellement les regards. Tu es venu pour créer, rayonner et inspirer.",
   "Soleil_Vierge": "Ton Soleil en Vierge fait de ton regard un prisme qui décompose la perfection du monde. Ta modestie cache une intelligence analytique fine.",
@@ -18,9 +18,9 @@ const INTERPRETATIONS = {
   "Soleil_Verseau": "Ton Soleil en Verseau fait de toi un visionnaire en avance sur ton temps. Tu vois ce que le monde pourrait devenir. Ta liberté est sacrée.",
   "Soleil_Poissons": "Ton Soleil en Poissons dissout les frontières entre le rêve et le réel. Tu perçois les courants souterrains de l'âme collective.",
   
-  "Lune_Belier": "Ta Lune en Bélier rend tes émotions ardentes et immédiates. Tu réagis au quart de tour, ton cœur est un brasier qui s'enflamme sans prévenir.",
+  "Lune_Bélier": "Ta Lune en Bélier rend tes émotions ardentes et immédiates. Tu réagis au quart de tour, ton cœur est un brasier qui s'enflamme sans prévenir.",
   "Lune_Taureau": "Ta Lune en Taureau cherche la sécurité émotionnelle dans les plaisirs simples et durables. C'est dans le concret que ton cœur trouve la paix.",
-  "Lune_Gemeaux": "Ta Lune en Gémeaux fait de tes émotions un kaléidoscope changeant. Tu analyses ce que tu ressens avec une curiosité insatiable.",
+  "Lune_Gémeaux": "Ta Lune en Gémeaux fait de tes émotions un kaléidoscope changeant. Tu analyses ce que tu ressens avec une curiosité insatiable.",
   "Lune_Cancer": "Ta Lune en Cancer te rend d'une sensibilité profonde et nourricière. Tu ressens tout intensément, comme si le monde vibrait dans ta poitrine.",
   "Lune_Lion": "Ta Lune en Lion a besoin que ses sentiments soient vus et célébrés. Ton cœur est généreux et sincère dans sa quête de chaleur.",
   "Lune_Vierge": "Ta Lune en Vierge transforme chaque émotion en un puzzle à résoudre. Tu prends soin des autres avec une minutie et une attention touchante.",
@@ -31,27 +31,28 @@ const INTERPRETATIONS = {
   "Lune_Verseau": "Ta Lune en Verseau vit les émotions de manière décalée et originale. Ton cœur bat souvent pour des causes plus grandes que toi.",
   "Lune_Poissons": "Ta Lune en Poissons rend ton monde émotionnel vaste comme l'océan. Tu captes les sentiments des autres et les ambiances invisibles.",
 
-  "Mercure_Belier": "Ton Mercure en Bélier rend ta pensée rapide et incisive. Tu dis ce que tu penses sans détour, avec une franchise d'éclaireur.",
+  "Mercure_Bélier": "Ton Mercure en Bélier rend ta pensée rapide et incisive. Tu dis ce que tu penses sans détour, avec une franchise d'éclaireur.",
   "Mercure_Verseau": "Ton Mercure en Verseau fait jaillir des éclairs de génie. Tu penses hors des cadres et inventes des concepts résolument futuristes.",
   
-  "Venus_Taureau": "Ta Vénus en Taureau aime avec les sens et la peau. L'amour est pour toi une expérience charnelle, esthétique et surtout durable.",
-  "Venus_Balance": "Ta Vénus en Balance cherche l'harmonie et l'élégance dans chaque rencontre. L'équité est le socle de ta façon d'aimer.",
+  "Vénus_Taureau": "Ta Vénus en Taureau aime avec les sens et la peau. L'amour est pour toi une expérience charnelle, esthétique et surtout durable.",
+  "Vénus_Balance": "Ta Vénus en Balance cherche l'harmonie et l'élégance dans chaque rencontre. L'équité est le socle de ta façon d'aimer.",
 
   "Mars_Scorpion": "Ton Mars en Scorpion possède une force souterraine et magnétique. Tu agis dans l'ombre et frappes avec une précision chirurgicale.",
   "Mars_Capricorne": "Ton Mars en Capricorne est doté d'une endurance exceptionnelle. Tu gravis les montagnes du succès sans jamais faiblir."
 };
 
-/**
- * NatalChart Screen
- * @param {Function} onSeeNoeuds - Fonction de navigation vers l'écran des Nœuds Lunaires
- */
 const NatalChart = ({ onSeeNoeuds }) => {
   const canvasRef = useRef(null);
   const [planeteSelectionnee, setPlaneteSelectionnee] = useState(null);
   const { user } = useAuthContext();
   const { profile, loading } = useProfile(user?.id);
 
-  const displayData = profile?.nom ? profile : userData;
+  const planetes = useMemo(() => getPlanetesDuJour(), []);
+
+  const displayData = {
+    nom: profile?.nom || "Voyageur",
+    date_naissance: profile?.date_naissance
+  };
 
   const getInterpretation = (p) => {
     if (!p || !p.nom || !p.signe) return "Une influence mystérieuse guide ton ciel.";
@@ -100,7 +101,7 @@ const NatalChart = ({ onSeeNoeuds }) => {
     });
 
     // Placement des Planètes
-    const planets = (positionsPlanetaires && positionsPlanetaires.length > 0) ? positionsPlanetaires : [];
+    const planets = (planetes && planetes.length > 0) ? planetes : [];
     planets.forEach((p, i) => {
       const angle = degToRad((i * (360 / planets.length)));
       const x = centre + 78 * Math.cos(angle);
@@ -128,7 +129,7 @@ const NatalChart = ({ onSeeNoeuds }) => {
     ctx.font = 'bold 8px sans-serif';
     ctx.fillText('ASTRA', centre, centre);
 
-  }, [loading, profile, positionsPlanetaires]);
+  }, [loading, planetes]);
 
   if (loading) return <div className="h-full flex items-center justify-center text-gold italic">Synchronisation...</div>;
 
@@ -139,8 +140,8 @@ const NatalChart = ({ onSeeNoeuds }) => {
         <p className="text-[9px] text-muted tracking-[2px] uppercase mb-1">Thème Natal</p>
         <h3 className="font-serif text-base text-cream">{displayData.nom}</h3>
         <p className="text-[10px] text-muted mt-0.5 tracking-wider">
-            {(displayData.dateNaissance || displayData.date_naissance) ? 
-                new Date(displayData.dateNaissance || displayData.date_naissance).toLocaleDateString('fr-FR') : 
+            {displayData.date_naissance ? 
+                new Date(displayData.date_naissance).toLocaleDateString('fr-FR') : 
                 "Éphémérides activées"}
         </p>
       </div>
@@ -153,7 +154,7 @@ const NatalChart = ({ onSeeNoeuds }) => {
 
       {/* Planet List */}
       <div className="mt-8 space-y-3">
-        {positionsPlanetaires?.map((p, i) => (
+        {planetes?.map((p, i) => (
           <div 
             key={i} 
             onClick={() => setPlaneteSelectionnee(p)}
@@ -166,12 +167,12 @@ const NatalChart = ({ onSeeNoeuds }) => {
               <p className="text-cream text-[13px] font-serif">{p.nom}</p>
               <p className="text-muted text-[10px]">en {p.signe}</p>
             </div>
-            <p className="text-[10px] text-gold/50 font-sans">{p.position}</p>
+            <p className="text-[10px] text-gold/50 font-sans">{p.position || ''}</p>
           </div>
         ))}
       </div>
 
-      {/* --- BOUTON NOEUDS LUNAIRES (Point d'entrée) --- */}
+      {/* --- BOUTON NOEUDS LUNAIRES --- */}
       <div className="mt-10 mb-10">
         <button 
           onClick={onSeeNoeuds}
@@ -185,7 +186,6 @@ const NatalChart = ({ onSeeNoeuds }) => {
             </div>
             <span className="text-gold/80 text-3xl transition-transform group-hover:translate-x-2 drop-shadow-[0_0_8px_rgba(201,164,96,0.3)]">☊</span>
           </div>
-          {/* Subtle Glow Effect */}
           <div className="absolute inset-0 bg-gold/5 opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
       </div>
@@ -193,7 +193,7 @@ const NatalChart = ({ onSeeNoeuds }) => {
       {/* Interpretation Modal */}
       {planeteSelectionnee && (
         <div 
-          className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300"
+          className="absolute inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300"
           onClick={() => setPlaneteSelectionnee(null)}
         >
           <div 

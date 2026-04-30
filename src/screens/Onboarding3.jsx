@@ -3,10 +3,10 @@ import Button from "../components/ui/Button";
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { supabase } from '../lib/supabase';
+import { getSigneSolaire, getSigneLunaire, getAscendant } from '../services/astroService';
 
-const Onboarding3 = ({ onFinish }) => {
+const Onboarding3 = ({ onFinish, dateNaissance, heure }) => {
   const { user } = useAuthContext();
-  // On récupère mutateProfile pour forcer la mise à jour locale du hook useProfile
   const { saveProfile, isLoading } = useProfile(user?.id); 
   
   const [query, setQuery] = useState('');
@@ -43,38 +43,28 @@ const Onboarding3 = ({ onFinish }) => {
       return;
     }
 
-    const birthDate = localStorage.getItem('onboarding_date');
-    const birthTime = localStorage.getItem('onboarding_time');
-    const birthNom = localStorage.getItem('onboarding_nom'); // Si tu as stocké le nom avant
+    const lat = parseFloat(selectedCity.coords.split(',')[0]) || 48.8566;
+    const signeSolaire = getSigneSolaire(dateNaissance);
+    const signeLunaire = getSigneLunaire(dateNaissance);
+    const ascendant = getAscendant(heure || '12:00', lat);
 
-    const lat = parseFloat(selectedCity.coords.split(',')[0]);
-    
     const profileData = {
-      nom: birthNom || "Voyageur",
-      date_naissance: birthDate || '1995-05-15',
-      heure_naissance: birthTime || '12:00',
+      nom: user?.user_metadata?.nom || "Voyageur",
+      date_naissance: dateNaissance || '1995-01-01',
+      heure_naissance: heure || '12:00',
       lieu_naissance: selectedCity.city,
       latitude: lat,
-      signe_solaire: "Lion", // Idéalement calculé ici
-      onboarding_completed: true // CRUCIAL : Marque la fin du tunnel
+      signe_solaire: signeSolaire,
+      signe_lunaire: signeLunaire,
+      ascendant: ascendant,
+      onboarding_completed: true
     };
 
     try {
-      // 1. Sauvegarde dans Supabase
       const success = await saveProfile(profileData);
       
       if (success) {
-        // 2. Nettoyage immédiat du stockage local
-        localStorage.removeItem('onboarding_date');
-        localStorage.removeItem('onboarding_time');
-        localStorage.removeItem('onboarding_nom');
-
-        // 3. LE FIX : On attend un peu plus pour laisser Supabase finir l'écriture
-        // et on déclenche le changement d'écran.
-        setTimeout(() => {
-          onFinish(); 
-        }, 800);
-
+        onFinish();
       } else {
         alert("Erreur lors de la sauvegarde. Vérifiez votre connexion.");
       }

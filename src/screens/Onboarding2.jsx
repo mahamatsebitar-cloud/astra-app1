@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import Button from "../components/ui/Button"; // Utilisation de ton composant validé
+import Button from "../components/ui/Button";
 
 const Onboarding2 = ({ onNext }) => {
   const [hour, setHour] = useState("12");
@@ -11,6 +11,14 @@ const Onboarding2 = ({ onNext }) => {
   const minutes = Array.from({ length: 60 }, (_, i) =>
     String(i).padStart(2, "0")
   );
+
+  const handleNext = () => {
+    onNext(`${hour}:${minute}`);
+  };
+
+  const handleSkip = () => {
+    onNext("12:00");
+  };
 
   return (
     <div className="flex flex-col items-center">
@@ -73,13 +81,13 @@ const Onboarding2 = ({ onNext }) => {
         </p>
       </div>
 
-      {/* Bouton principal utilisant ton composant */}
-      <Button onClick={onNext}>
+      {/* Bouton principal */}
+      <Button onClick={handleNext}>
         Valider l'instant →
       </Button>
       
       <button 
-        onClick={onNext}
+        onClick={handleSkip}
         className="mt-4 text-muted text-[10px] uppercase tracking-widest hover:text-gold transition-colors"
       >
         Je ne connais pas mon heure

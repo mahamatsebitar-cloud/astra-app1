@@ -49,6 +49,7 @@ const Profil = ({ onLogout, onNavigate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [legalScreen, setLegalScreen] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // --- Mémorisation des données calculées ---
   const displayNom = useMemo(() => profile?.nom || user?.user_metadata?.nom || "Voyageur", [profile, user]);
@@ -83,6 +84,22 @@ const Profil = ({ onLogout, onNavigate }) => {
   const handleEditBack = () => {
     setIsEditing(false);
     refreshProfile?.();
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      const { error } = await deleteAccount(user.id);
+      if (!error) {
+        onLogout();
+      } else {
+        alert('Erreur lors de la suppression : ' + error);
+      }
+    } catch (err) {
+      alert('Erreur lors de la suppression : ' + err.message);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // --- Renders conditionnels (Screens secondaires) ---
@@ -256,15 +273,19 @@ const Profil = ({ onLogout, onNavigate }) => {
               <p className="text-cream text-sm font-serif mb-2">Effacer votre trace ?</p>
               <p className="text-muted text-[10px] leading-relaxed mb-6 px-4">Cette action est irréversible et supprimera toutes vos données conformément au RGPD.</p>
               <div className="flex gap-3">
-                <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-3 rounded-full border border-white/10 text-cream text-[11px]">Annuler</button>
                 <button 
-                  onClick={async () => {
-                    await deleteAccount(user.id);
-                    onLogout();
-                  }}
-                  className="flex-1 py-3 rounded-full bg-red-900/40 text-red-200 text-[11px] font-bold"
+                  onClick={() => setShowDeleteConfirm(false)} 
+                  disabled={isDeleting}
+                  className="flex-1 py-3 rounded-full border border-white/10 text-cream text-[11px]"
                 >
-                  Supprimer
+                  Annuler
+                </button>
+                <button 
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting}
+                  className="flex-1 py-3 rounded-full bg-red-900/40 text-red-200 text-[11px] font-bold disabled:opacity-50"
+                >
+                  {isDeleting ? 'Suppression...' : 'Supprimer'}
                 </button>
               </div>
             </div>

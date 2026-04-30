@@ -36,8 +36,7 @@ export default function Abonnement({ onBack, onSubscribed }) {
     setLocalError(null);
     
     try {
-      // On passe l'ID du plan sélectionné au service
-      const result = await startTrial(PLANS[planKey].id);
+      const result = await startTrial();
       
       if (result?.error) throw new Error(result.error);
       
@@ -48,7 +47,7 @@ export default function Abonnement({ onBack, onSubscribed }) {
     } finally {
       setIsProcessing(false);
     }
-  }, [planKey, startTrial, onSubscribed]);
+  }, [startTrial, onSubscribed]);
 
   // État de chargement initial du Hook
   if (subLoading) {

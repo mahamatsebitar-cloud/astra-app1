@@ -53,6 +53,8 @@ const getStableSeed = (p1, p2) => {
   return hash;
 };
 
+const clamp = (val) => Math.round(Math.min(Math.max(val, 20), 98));
+
 export const calculateCompatibility = (profil1, profil2) => {
   if (!profil1 || !profil2) return { global: 0, amour: 0, communication: 0, valeurs: 0, complicite: 0, durabilite: 0 };
 
@@ -72,12 +74,12 @@ export const calculateCompatibility = (profil1, profil2) => {
   const varGen = (s, min, max) => min + (Math.abs(Math.sin(s)) * (max - min));
 
   return {
-    global: Math.round(Math.min(Math.max(base, 30), 96)),
-    amour: Math.round(varGen(seed, base - 5, base + 8)),
-    communication: Math.round(varGen(seed + 1, base - 10, base + 5)),
-    valeurs: Math.round(varGen(seed + 2, base - 3, base + 7)),
-    complicite: Math.round(varGen(seed + 3, base - 6, base + 6)),
-    durabilite: Math.round(varGen(seed + 4, base - 12, base + 4))
+    global: clamp(base),
+    amour: clamp(varGen(seed, base - 5, base + 8)),
+    communication: clamp(varGen(seed + 1, base - 10, base + 5)),
+    valeurs: clamp(varGen(seed + 2, base - 3, base + 7)),
+    complicite: clamp(varGen(seed + 3, base - 6, base + 6)),
+    durabilite: clamp(varGen(seed + 4, base - 12, base + 4))
   };
 };
 
