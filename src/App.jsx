@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PhoneFrame from "./components/layout/PhoneFrame.jsx";
 import { AuthProvider, useAuthContext } from './context/AuthContext';
@@ -17,7 +17,8 @@ import NatalChart from './screens/NatalChart';
 import Horoscope from './screens/Horoscope';
 import Compatibilite from './screens/Compatibilite';
 import Profil from './screens/Profil';
-import NoeudLunaire from './screens/NoeudLunaire'; // ← Ajouté
+import NoeudLunaire from './screens/NoeudLunaire';
+import Abonnement from './screens/Abonnement';
 
 const AppContent = () => {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
@@ -25,11 +26,22 @@ const AppContent = () => {
   
   const [currentScreen, setCurrentScreen] = useState('loading');
   const [activeTab, setActiveTab] = useState('home');
+  const [previousScreen, setPreviousScreen] = useState('home');
+  
+  const scrollRef = useRef(null);
+
+  // Scroll Reset à chaque changement d'écran
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo(0, 0);
+    }
+  }, [currentScreen]);
 
   useEffect(() => {
     if (authLoading || profileLoading) return;
 
     if (isAuthenticated) {
+      // Si l'user est connecté et a un profil complet
       if (profile && (profile.onboarding_completed || profile.signe_solaire)) {
         const gatewayScreens = ['loading', 'splash', 'login', 'onb1', 'onb2', 'onb3', 'loading_theme', 'onbInvit'];
         
@@ -39,20 +51,20 @@ const AppContent = () => {
         }
       } 
       else {
+        // Redirection vers l'onboarding si profil incomplet
         const onboardingScreens = ['onb1', 'onb2', 'onb3', 'loading_theme', 'onbInvit'];
         if (!onboardingScreens.includes(currentScreen)) {
-          console.log("🛠️ Profil incomplet -> Redirection vers début Onboarding");
           setCurrentScreen('onb1');
         }
       }
     } else {
+      // Non authentifié
       if (currentScreen !== 'splash' && currentScreen !== 'login') {
         setCurrentScreen('splash');
       }
     }
   }, [authLoading, profileLoading, isAuthenticated, profile, currentScreen]);
 
-  // Mis à jour pour inclure noeud_lunaire dans les écrans avec navigation
   const showNav = useMemo(() => {
     return ['home', 'natal', 'horoscope', 'compat', 'profil', 'noeud_lunaire'].includes(currentScreen);
   }, [currentScreen]);
@@ -60,6 +72,11 @@ const AppContent = () => {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setCurrentScreen(tab);
+  };
+
+  const handleNavigateToAbonnement = (fromScreen) => {
+    setPreviousScreen(fromScreen || currentScreen);
+    setCurrentScreen('abonnement');
   };
 
   if (authLoading || profileLoading || currentScreen === 'loading') {
@@ -88,32 +105,23 @@ const AppContent = () => {
       case 'onb3':
         return <Onboarding3 onFinish={() => setCurrentScreen('loading_theme')} />;
       case 'loading_theme':
-        return (
-          <LoadingTheme 
-            onComplete={() => setCurrentScreen('onbInvit')} 
-            signeSolaire={profile?.signe_solaire}
-          />
-        );
+        return <LoadingTheme onComplete={() => setCurrentScreen('onbInvit')} signeSolaire={profile?.signe_solaire} />;
       case 'onbInvit':
-        return (
-          <OnboardingInvit 
-            onFinish={() => handleTabChange('home')} 
-            userNom={profile?.nom || "Voyageur"}
-            signeSolaire={profile?.signe_solaire || "Lion"}
-          />
-        );
+        return <OnboardingInvit onFinish={() => handleTabChange('home')} userNom={profile?.nom || "Voyageur"} signeSolaire={profile?.signe_solaire || "Lion"} />;
       case 'home':
         return <Home onHoroscope={() => handleTabChange('horoscope')} onProfil={() => handleTabChange('profil')} />;
       case 'natal':
-        return <NatalChart onSeeNoeuds={() => setCurrentScreen('noeud_lunaire')} />; // ← Passé la prop
+        return <NatalChart onSeeNoeuds={() => setCurrentScreen('noeud_lunaire')} onUpgrade={() => handleNavigateToAbonnement('natal')} />;
       case 'noeud_lunaire':
-        return <NoeudLunaire onBack={() => setCurrentScreen('natal')} />; // ← Ajouté
+        return <NoeudLunaire onBack={() => setCurrentScreen('natal')} onUpgrade={() => handleNavigateToAbonnement('noeud_lunaire')} />;
       case 'horoscope':
-        return <Horoscope onBack={() => handleTabChange('home')} />;
+        return <Horoscope onBack={() => handleTabChange('home')} onUpgrade={() => handleNavigateToAbonnement('horoscope')} />;
       case 'compat':
-        return <Compatibilite />;
+        return <Compatibilite onUpgrade={() => handleNavigateToAbonnement('compat')} />;
       case 'profil':
-        return <Profil onLogout={() => setCurrentScreen('splash')} />;
+        return <Profil onLogout={() => setCurrentScreen('splash')} onNavigate={(screen) => screen === 'abonnement' && handleNavigateToAbonnement('profil')} />;
+      case 'abonnement':
+        return <Abonnement onBack={() => setCurrentScreen(previousScreen)} onSubscribed={() => setCurrentScreen('home')} />;
       default:
         return <Home onHoroscope={() => handleTabChange('horoscope')} onProfil={() => handleTabChange('profil')} />;
     }
@@ -129,6 +137,7 @@ const AppContent = () => {
         <AnimatePresence mode="wait">
           <motion.div
             key={currentScreen}
+            ref={scrollRef}
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
@@ -143,12 +152,10 @@ const AppContent = () => {
   );
 };
 
-const App = () => {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
-};
+const App = () => (
+  <AuthProvider>
+    <AppContent />
+  </AuthProvider>
+);
 
 export default App;
