@@ -14,6 +14,7 @@
     "@tailwindcss/postcss": "^4.2.4",
     "astronomia": "^4.2.0",
     "dayjs": "^1.11.20",
+    "ephemeris": "^2.2.0",
     "framer-motion": "^12.38.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"

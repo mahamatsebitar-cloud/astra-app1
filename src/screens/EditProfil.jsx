@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuthContext } from '../context/AuthContext';
-import { useProfile } from '../hooks/useProfile';
-import { updateProfile } from '../services/profileService';
+import { useProfileContext } from '../context/ProfileContext';
 import { getSigneSolaire, getSigneLunaire, getAscendant } from '../services/astroService';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -13,7 +12,7 @@ import Button from '../components/ui/Button';
  */
 export default function EditProfil({ onBack }) {
   const { user } = useAuthContext();
-  const { profile } = useProfile(user?.id);
+  const { profile, updateProfile } = useProfileContext();
   
   // États du formulaire
   const [nom, setNom] = useState('');
@@ -31,16 +30,12 @@ export default function EditProfil({ onBack }) {
     if (profile) {
       setNom(profile.nom || profile.username || '');
       setDateNaissance(profile.date_naissance || '');
-      // Formatage de l'heure (HH:mm) pour l'input type="time"
       const h = (profile.heure_naissance || '').slice(0, 5);
       setHeureNaissance(h);
       setLieuNaissance(profile.lieu_naissance || '');
     }
   }, [profile]);
 
-  /**
-   * Sauvegarde les modifications en base de données après recalcul astro.
-   */
   const handleSave = async () => {
     if (!nom || !dateNaissance) {
       setError("Le prénom et la date de naissance sont indispensables.");
@@ -51,16 +46,13 @@ export default function EditProfil({ onBack }) {
     setError(null);
     
     try {
-      // Nettoyage de l'heure pour garantir le format HH:mm
       const cleanTime = (heureNaissance || '12:00').slice(0, 5);
       
-      // Recalcul des données astronomiques basé sur les nouvelles entrées
       const signeSolaire = getSigneSolaire(dateNaissance);
       const signeLunaire = getSigneLunaire(dateNaissance);
-      // Latitude par défaut Paris si lieu non géocodé
       const ascendant = getAscendant(cleanTime, 48.8566);
       
-      const { error: updateError } = await updateProfile(user.id, {
+      const profileData = {
         nom,
         username: nom,
         date_naissance: dateNaissance,
@@ -69,13 +61,15 @@ export default function EditProfil({ onBack }) {
         signe_solaire: signeSolaire,
         signe_lunaire: signeLunaire,
         ascendant
-      });
+      };
+      
+      // Utilise la fonction globale du context — met à jour tous les composants
+      const { error: updateError } = await updateProfile(profileData);
       
       if (updateError) throw updateError;
       
       setSuccess(true);
       
-      // Retour à l'écran profil après un court délai pour confirmer le succès
       const timer = setTimeout(() => {
         onBack();
       }, 1500);

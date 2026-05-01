@@ -1,3 +1,4 @@
+// src/screens/Horoscope.jsx
 import React, { useMemo } from 'react';
 import ScoreBar from '../components/ui/ScoreBar';
 import Card from '../components/ui/Card';
@@ -5,8 +6,16 @@ import PremiumGate from '../components/ui/PremiumGate';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { getHoroscopeComplet } from '../services/horoscopeService';
+import { generateMessagePersonnalise } from '../services/messageGeneratorService';
+import { getPlanetesDuJour, getThemeNatal } from '../services/astroService';
+import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS } from '../data/lecturesMaisons';
 
-// --- Constantes UI ---
+const SIGNES = [
+  "Bélier", "Taureau", "Gémeaux", "Cancer",
+  "Lion", "Vierge", "Balance", "Scorpion",
+  "Sagittaire", "Capricorne", "Verseau", "Poissons"
+];
+
 const ZODIAC_SYMBOLS = {
   "Bélier": "♈", "Taureau": "♉", "Gémeaux": "♊", "Cancer": "♋",
   "Lion": "♌", "Vierge": "♍", "Balance": "♎", "Scorpion": "♏",
@@ -28,19 +37,54 @@ const ZODIAC_DATES = {
   "Poissons": "19 février — 19 mars"
 };
 
+// Helper pour trouver la maison
+function getMaison(degrees, maisons) {
+  if (!maisons?.length) return null;
+  for (let i = 0; i < 12; i++) {
+    const debut = maisons[i];
+    const fin = maisons[(i + 1) % 12];
+    const d = ((degrees % 360) + 360) % 360;
+    if (debut <= fin) {
+      if (d >= debut && d < fin) return i + 1;
+    } else {
+      if (d >= debut || d < fin) return i + 1;
+    }
+  }
+  return 1;
+}
+
+function getMaisonTransit(planete, maisonsNatales) {
+  if (!maisonsNatales?.length || !planete) return null;
+  const degrees = planete.degres + (SIGNES.indexOf(planete.signe) * 30);
+  return getMaison(degrees, maisonsNatales);
+}
+
 const Horoscope = ({ onBack, onUpgrade }) => {
   const { user } = useAuthContext();
   const { profile, loading } = useProfile(user?.id);
   
   const signeSolaire = profile?.signe_solaire;
+  const todayStr = new Date().toISOString().split('T')[0];
   
-  // Récupération des données de l'horoscope
   const horoscope = useMemo(() => {
     if (!signeSolaire) return null;
     return getHoroscopeComplet(signeSolaire);
   }, [signeSolaire]);
 
-  // Formatage de la date du jour
+  const lectureComplete = useMemo(() => {
+    if (!profile) return null;
+    return generateMessagePersonnalise(profile);
+  }, [profile]);
+
+  // Thème natal
+  const themeNatal = useMemo(() => {
+    if (!profile?.date_naissance) return null;
+    return getThemeNatal(profile.date_naissance, profile.heure_naissance || '12:00', profile.latitude || 48.8566, profile.longitude || 2.3522);
+  }, [profile?.date_naissance, profile?.heure_naissance, profile?.latitude, profile?.longitude]);
+
+  // Planètes du jour
+  const planetesDuJour = useMemo(() => getPlanetesDuJour(), [todayStr]);
+
   const dateAujourdhui = useMemo(() => {
     const date = new Intl.DateTimeFormat('fr-FR', {
       weekday: 'long',
@@ -48,37 +92,69 @@ const Horoscope = ({ onBack, onUpgrade }) => {
       month: 'long'
     }).format(new Date());
     return date.charAt(0).toUpperCase() + date.slice(1);
-  }, []);
+  }, [todayStr]);
 
-  // Structuration des domaines (Amour, Travail, Bien-être)
+  // Domaines personnalisés avec vraies positions planétaires
   const domaines = useMemo(() => {
     if (!horoscope) return [];
+    
+    const maisons = themeNatal?.maisons;
+    const venus = planetesDuJour.find(p => p.nom === "Vénus");
+    const mars = planetesDuJour.find(p => p.nom === "Mars");
+    const lune = planetesDuJour.find(p => p.nom === "Lune");
+    
+    const maisonVenus = getMaisonTransit(venus, maisons);
+    const maisonMars = getMaisonTransit(mars, maisons);
+    const maisonLune = getMaisonTransit(lune, maisons);
+    
+    const getTexteDomaine = (planete, maison, fallbackTexte) => {
+      if (planete && maison) {
+        // Utilise la variante _detail pour l'écran Horoscope
+        const cle = `${planete.nom}_maison_${maison}_detail`;
+        const lecture = LECTURES_MAISONS[cle];
+        if (lecture) return { texte: lecture, maison, planete: planete.nom };
+      }
+      return { texte: fallbackTexte, maison: null, planete: null };
+    };
+    
+    const amour = getTexteDomaine(venus, maisonVenus, horoscope.amour?.texte || "Vénus reste discrète aujourd'hui.");
+    const travail = getTexteDomaine(mars, maisonMars, horoscope.travail?.texte || "Persévérez dans vos efforts actuels.");
+    const bienEtre = getTexteDomaine(lune, maisonLune, horoscope.bienEtre?.texte || "Prenez un moment pour respirer.");
+    
     return [
       {
         label: "Amour",
-        texte: horoscope.amour?.texte || "Vénus reste discrète aujourd'hui.",
+        texte: amour.texte,
         score: horoscope.amour?.score || 50,
         couleur: "#C17B8A",
-        icone: "♥"
+        icone: "♥",
+        planete: amour.planete || "Vénus",
+        maison: amour.maison,
+        maisonTexte: amour.maison ? SIGNIFICATIONS_MAISONS[amour.maison] : null
       },
       {
         label: "Travail",
-        texte: horoscope.travail?.texte || "Persévérez dans vos efforts actuels.",
+        texte: travail.texte,
         score: horoscope.travail?.score || 50,
         couleur: "#7B9ECB",
-        icone: "◆"
+        icone: "◆",
+        planete: travail.planete || "Mars",
+        maison: travail.maison,
+        maisonTexte: travail.maison ? SIGNIFICATIONS_MAISONS[travail.maison] : null
       },
       {
         label: "Bien-être",
-        texte: horoscope.bienEtre?.texte || "Prenez un moment pour respirer.",
+        texte: bienEtre.texte,
         score: horoscope.bienEtre?.score || 50,
         couleur: "#7BB8A0",
-        icone: "●"
+        icone: "●",
+        planete: bienEtre.planete || "Lune",
+        maison: bienEtre.maison,
+        maisonTexte: bienEtre.maison ? SIGNIFICATIONS_MAISONS[bienEtre.maison] : null
       }
     ];
-  }, [horoscope]);
+  }, [horoscope, planetesDuJour, themeNatal]);
 
-  // État de chargement
   if (loading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-night gap-4">
@@ -90,7 +166,6 @@ const Horoscope = ({ onBack, onUpgrade }) => {
     );
   }
 
-  // Cas où le profil n'est pas rempli
   if (!signeSolaire || !horoscope) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-night px-8 text-center">
@@ -108,7 +183,6 @@ const Horoscope = ({ onBack, onUpgrade }) => {
   return (
     <div className="w-full px-5 py-2 bg-night min-h-screen pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
-      {/* Header */}
       <header className="flex items-center gap-4 mb-8 pt-4">
         <button 
           onClick={onBack} 
@@ -122,10 +196,8 @@ const Horoscope = ({ onBack, onUpgrade }) => {
         </div>
       </header>
 
-      {/* Section Signe Solaire */}
       <section className="flex flex-col items-center py-8 border-y border-white/5 my-6 relative overflow-hidden">
         <div className="absolute inset-0 bg-gold/5 blur-[80px] rounded-full" />
-        
         <span 
           className="text-6xl mb-3 text-gold relative z-10 select-none"
           style={{ fontVariantEmoji: 'text' }}
@@ -140,16 +212,19 @@ const Horoscope = ({ onBack, onUpgrade }) => {
         </p>
       </section>
 
-      {/* Message de Guidance Principal */}
       <div className="py-8 px-6 mb-8 bg-white/[0.02] rounded-[32px] border border-white/5 relative">
-        <span className="absolute top-4 left-6 text-4xl text-gold/20 font-serif">“</span>
+        <span className="absolute top-4 left-6 text-4xl text-gold/20 font-serif">"</span>
         <p className="italic font-serif text-base text-cream/90 leading-[1.8] text-center relative z-10 px-2">
-          {horoscope.message}
+          {lectureComplete?.message || horoscope.message}
         </p>
-        <span className="absolute bottom-0 right-6 text-4xl text-gold/20 font-serif">”</span>
+        {lectureComplete?.maison && (
+          <p className="text-[9px] text-gold/30 tracking-widest uppercase mt-3 text-center relative z-10">
+            {lectureComplete.planete.nom} · maison {lectureComplete.maison} · {lectureComplete.significationMaison}
+          </p>
+        )}
+        <span className="absolute bottom-0 right-6 text-4xl text-gold/20 font-serif">"</span>
       </div>
 
-      {/* Tags d'énergie */}
       {horoscope.tags && (
         <div className="flex gap-2 mb-10 justify-center flex-wrap">
           {horoscope.tags.map((tag, index) => (
@@ -163,7 +238,6 @@ const Horoscope = ({ onBack, onUpgrade }) => {
         </div>
       )}
 
-      {/* Domaines de vie */}
       <div className="space-y-6">
         <div className="flex items-center gap-3 opacity-30">
           <p className="text-[9px] text-muted tracking-[3px] uppercase font-bold whitespace-nowrap">Murmures des astres</p>
@@ -180,6 +254,11 @@ const Horoscope = ({ onBack, onUpgrade }) => {
                     <p className="text-[10px] tracking-[2px] uppercase font-black" style={{ color: domaine.couleur }}>
                       {domaine.label}
                     </p>
+                    {domaine.maison && (
+                      <span className="text-[8px] text-gold/40 tracking-wider ml-1">
+                        {domaine.planete} · M{domaine.maison}
+                      </span>
+                    )}
                   </div>
                   <span className="text-[11px] text-muted/50 font-serif italic">{domaine.score}%</span>
                 </div>
@@ -187,6 +266,12 @@ const Horoscope = ({ onBack, onUpgrade }) => {
                 <p className="text-[13px] text-cream/70 leading-relaxed font-sans group-hover:text-cream transition-colors">
                   {domaine.texte}
                 </p>
+                
+                {domaine.maisonTexte && (
+                  <p className="text-[9px] text-gold/30 tracking-widest uppercase font-sans">
+                    {domaine.maisonTexte}
+                  </p>
+                )}
                 
                 <div className="pt-2">
                   <ScoreBar score={domaine.score} couleur={domaine.couleur} />
@@ -197,7 +282,6 @@ const Horoscope = ({ onBack, onUpgrade }) => {
         </div>
       </div>
 
-      {/* Extension Premium */}
       <PremiumGate 
         featureKey="horoscope_semaine" 
         onUpgrade={onUpgrade} 

@@ -83,7 +83,8 @@ const Profil = ({ onLogout, onNavigate }) => {
 
   const handleEditBack = () => {
     setIsEditing(false);
-    refreshProfile?.();
+    // Ne pas rafraîchir le profil - le state local est déjà à jour via handleUpdateProfile
+    // refreshProfile?.();
   };
 
   const handleDeleteAccount = async () => {

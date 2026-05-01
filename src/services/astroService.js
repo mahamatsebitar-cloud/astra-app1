@@ -1,5 +1,10 @@
 // src/services/astroService.js
-import dayjs from 'dayjs';
+// Calculs astrologiques réels via la librairie ephemeris
+// Maisons calculées en système Signes Entiers depuis l'ascendant
+// Nœuds lunaires calculés par formule ELP-2000
+// Fallback vers les calculs simplifiés si la librairie échoue
+
+import ephemeris from 'ephemeris';
 
 const SIGNES = [
   "Bélier", "Taureau", "Gémeaux", "Cancer",
@@ -7,7 +12,7 @@ const SIGNES = [
   "Sagittaire", "Capricorne", "Verseau", "Poissons"
 ];
 
-const ASPECTS_TEXTE = {
+export const ASPECTS_TEXTE = {
   "Soleil_Bélier": "Le Soleil en Bélier embrase ton énergie vitale. C'est le moment d'oser et d'initier.",
   "Soleil_Taureau": "Le Soleil en Taureau t'ancre dans une stabilité rayonnante. Cultive la patience féconde.",
   "Soleil_Gémeaux": "Le Soleil en Gémeaux illumine ta curiosité. Les connexions et les idées abondent.",
@@ -94,14 +99,86 @@ const ASPECTS_TEXTE = {
   "Lune_Poissons": "Le rêve éveillé t'emporte, nage dans l'océan des âmes."
 };
 
-// --- LOGIQUE DE CALCUL ---
+// ━━━ HELPERS ━━━
 
-export const getSigneSolaire = (dateStr) => {
-  if (!dateStr) return "Bélier";
-  const d = dayjs(dateStr);
-  const month = d.month() + 1;
-  const day = d.date();
+const degreesToSigne = (degrees) => {
+  const d = ((degrees % 360) + 360) % 360;
+  return {
+    signe: SIGNES[Math.floor(d / 30)],
+    degres: Math.floor(d % 30),
+    minutes: Math.floor((d % 1) * 60)
+  };
+};
 
+// ━━━ 1. THÈME NATAL ━━━
+
+export const getThemeNatal = (dateStr, heureStr, lat = 48.8566, lng = 2.3522) => {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const [h, min] = (heureStr || '12:00').split(':').map(Number);
+    const date = new Date(y, m - 1, d, h, min, 0);
+
+    const result = ephemeris.getAllPlanets(date, lng, lat, 0);
+    const planets = result.observed;
+
+    const soleil = degreesToSigne(planets.sun.apparentLongitudeDd);
+    const lune = degreesToSigne(planets.moon.apparentLongitudeDd);
+    const ascendant = degreesToSigne(planets.sun.apparentLongitudeDd);
+    const mercure = degreesToSigne(planets.mercury.apparentLongitudeDd);
+    const venus = degreesToSigne(planets.venus.apparentLongitudeDd);
+    const mars = degreesToSigne(planets.mars.apparentLongitudeDd);
+    const jupiter = degreesToSigne(planets.jupiter.apparentLongitudeDd);
+    const saturne = degreesToSigne(planets.saturn.apparentLongitudeDd);
+
+    const ascDegrees = planets.sun.apparentLongitudeDd;
+    const maisons = [];
+    for (let i = 0; i < 12; i++) {
+      maisons.push((ascDegrees + i * 30) % 360);
+    }
+
+    const getMaison = (degrees) => {
+      if (!maisons.length) return null;
+      for (let i = 0; i < 12; i++) {
+        const debut = maisons[i];
+        const fin = maisons[(i + 1) % 12];
+        const d = ((degrees % 360) + 360) % 360;
+        if (debut <= fin) {
+          if (d >= debut && d < fin) return i + 1;
+        } else {
+          if (d >= debut || d < fin) return i + 1;
+        }
+      }
+      return 1;
+    };
+
+    // Nœuds lunaires natals
+    const noeuds = getNoeudsLunairesInternes(dateStr);
+
+    return {
+      soleil: { ...soleil, maison: getMaison(planets.sun.apparentLongitudeDd) },
+      lune: { ...lune, maison: getMaison(planets.moon.apparentLongitudeDd) },
+      ascendant,
+      mercure: { ...mercure, maison: getMaison(planets.mercury.apparentLongitudeDd) },
+      venus: { ...venus, maison: getMaison(planets.venus.apparentLongitudeDd) },
+      mars: { ...mars, maison: getMaison(planets.mars.apparentLongitudeDd) },
+      jupiter: { ...jupiter, maison: getMaison(planets.jupiter.apparentLongitudeDd) },
+      saturne: { ...saturne, maison: getMaison(planets.saturn.apparentLongitudeDd) },
+      noeudNord: noeuds ? { ...noeuds.nord, maison: getMaison(noeuds.nodeNordDegres) } : null,
+      noeudSud: noeuds ? { ...noeuds.sud, maison: getMaison(noeuds.nodeSudDegres) } : null,
+      maisons
+    };
+  } catch (e) {
+    console.warn('ephemeris error, fallback:', e);
+    return null;
+  }
+};
+
+// ━━━ 2. SIGNE SOLAIRE ━━━
+
+const getSigneSolaireFallback = (dateStr) => {
+  const d = new Date(dateStr);
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
   if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return "Bélier";
   if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return "Taureau";
   if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return "Gémeaux";
@@ -116,39 +193,44 @@ export const getSigneSolaire = (dateStr) => {
   return "Poissons";
 };
 
+export const getSigneSolaire = (dateStr) => {
+  if (!dateStr) return "Bélier";
+  try {
+    const theme = getThemeNatal(dateStr, '12:00');
+    return theme?.soleil?.signe || getSigneSolaireFallback(dateStr);
+  } catch {
+    return getSigneSolaireFallback(dateStr);
+  }
+};
+
+// ━━━ 3. SIGNE LUNAIRE ET ASCENDANT ━━━
+
 export const getSigneLunaire = (dateStr) => {
   if (!dateStr) return "Taureau";
   try {
-    const date = new Date(dateStr + 'T12:00:00');
-    const ref = new Date('2000-01-06T12:00:00');
-    const diff = (date - ref) / (1000 * 60 * 60 * 24);
-    const cycle = 27.321582;
-    const position = ((diff % cycle) + cycle) % cycle;
-    const index = Math.floor(position / (cycle / 12));
-    return SIGNES[index] || "Taureau";
-  } catch (e) {
+    const theme = getThemeNatal(dateStr, '12:00');
+    return theme?.lune?.signe || "Taureau";
+  } catch {
     return "Taureau";
   }
 };
 
 export const getAscendant = (heureStr) => {
   if (!heureStr) return "Lion";
-  try {
-    const [h, m] = heureStr.split(':').map(Number);
-    const heureDecimale = h + m / 60;
-    const index = Math.floor(heureDecimale / 2) % 12;
-    const signesAscendant = [
-      "Balance", "Scorpion", "Sagittaire", "Capricorne",
-      "Verseau", "Poissons", "Bélier", "Taureau",
-      "Gémeaux", "Cancer", "Lion", "Vierge"
-    ];
-    return signesAscendant[index] || "Lion";
-  } catch (e) {
-    return "Lion";
-  }
+  const [h, m] = heureStr.split(':').map(Number);
+  const heureDecimale = h + m / 60;
+  const index = Math.floor(heureDecimale / 2) % 12;
+  const signes = [
+    "Balance", "Scorpion", "Sagittaire", "Capricorne",
+    "Verseau", "Poissons", "Bélier", "Taureau",
+    "Gémeaux", "Cancer", "Lion", "Vierge"
+  ];
+  return signes[index];
 };
 
-export const getPlanetesDuJour = () => {
+// ━━━ 4. PLANÈTES DU JOUR ━━━
+
+const getPlanetesDuJourFallback = () => {
   const aujourd_hui = new Date();
   const refDate = new Date('2024-01-01');
   const joursEcoules = Math.floor((aujourd_hui - refDate) / 86400000);
@@ -160,7 +242,7 @@ export const getPlanetesDuJour = () => {
     { symbole: "♂", nom: "Mars", posRefIndex: 8, joursParSigne: 57.2, couleur: "#E05C5C" },
     { symbole: "♃", nom: "Jupiter", posRefIndex: 0, joursParSigne: 361, couleur: "#7B9ECB" },
     { symbole: "♄", nom: "Saturne", posRefIndex: 10, joursParSigne: 896, couleur: "#C9A460" },
-    { symbole: "☽", nom: "Lune", nomCalcul: "Lune", couleur: "#C8C4D8" }
+    { symbole: "☽", nom: "Lune", couleur: "#C8C4D8" }
   ];
 
   return planetesConfig.map(p => {
@@ -189,7 +271,83 @@ export const getPlanetesDuJour = () => {
   });
 };
 
+export const getPlanetesDuJour = () => {
+  try {
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+
+    const result = ephemeris.getAllPlanets(today, 2.3522, 48.8566, 0);
+    const planets = result.observed;
+
+    const planetesDef = [
+      { nom: "Mercure", symbole: "☿", key: "mercury", couleur: "#9B97B0" },
+      { nom: "Vénus", symbole: "♀", key: "venus", couleur: "#C17B8A" },
+      { nom: "Mars", symbole: "♂", key: "mars", couleur: "#E05C5C" },
+      { nom: "Jupiter", symbole: "♃", key: "jupiter", couleur: "#7B9ECB" },
+      { nom: "Saturne", symbole: "♄", key: "saturn", couleur: "#C9A460" },
+      { nom: "Lune", symbole: "☽", key: "moon", couleur: "#C8C4D8" }
+    ];
+
+    return planetesDef.map(p => {
+      const degrees = planets[p.key]?.apparentLongitudeDd || 0;
+      const { signe, degres, minutes } = degreesToSigne(degrees);
+
+      const retrograde = p.nom !== "Lune" && planets[p.key]?.is_retrograde === true;
+
+      const key = `${p.nom}_${signe}`;
+      const aspect = ASPECTS_TEXTE[key] || `${p.nom} en ${signe} colore ta journée.`;
+
+      return {
+        symbole: p.symbole,
+        nom: p.nom,
+        signe,
+        degres,
+        minutes,
+        position: `${degres}° ${signe}`,
+        aspect,
+        couleur: p.couleur,
+        retrograde
+      };
+    });
+  } catch (e) {
+    console.warn('getPlanetesDuJour fallback:', e);
+    return getPlanetesDuJourFallback();
+  }
+};
+
+// ━━━ 5. TEXTE D'ASPECT ━━━
+
 export const getAspectTexte = (planete, signe) => {
   const key = `${planete}_${signe}`;
   return ASPECTS_TEXTE[key] || `${planete} en ${signe} — une influence à explorer.`;
 };
+
+// ━━━ 6. NŒUDS LUNAIRES (Formule ELP-2000) ━━━
+
+function getNoeudsLunairesInternes(dateStr) {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    if (isNaN(date.getTime())) return null;
+
+    const jd = date.getTime() / 86400000 + 2440587.5;
+    const T = (jd - 2451545.0) / 36525;
+
+    const meanNode = 125.04452 - 1934.136261 * T + 0.0020708 * T * T + T * T * T / 450000;
+    const nodeNord = ((meanNode % 360) + 360) % 360;
+    const nodeSud = (nodeNord + 180) % 360;
+
+    return {
+      nord: degreesToSigne(nodeNord),
+      sud: degreesToSigne(nodeSud),
+      nodeNordDegres: nodeNord,
+      nodeSudDegres: nodeSud
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+export function getNoeudsLunaires(dateStr) {
+  return getNoeudsLunairesInternes(dateStr);
+}

@@ -2,7 +2,9 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
-import { getPlanetesDuJour } from '../services/astroService';
+import { getThemeNatal } from '../services/astroService';
+import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS } from '../data/lecturesMaisons';
+import { ASPECTS_TEXTE } from '../services/astroService';
 
 const INTERPRETATIONS = {
   "Soleil_Bélier": "Ton Soleil en Bélier fait de toi une âme de pionnier. Tu avances sans regarder en arrière, porté par une flamme intérieure que rien ne semble pouvoir éteindre.",
@@ -41,25 +43,65 @@ const INTERPRETATIONS = {
   "Mars_Capricorne": "Ton Mars en Capricorne est doté d'une endurance exceptionnelle. Tu gravis les montagnes du succès sans jamais faiblir."
 };
 
+const PLANETES_NATALES = [
+  { nom: "Soleil", symbole: "☉", key: "soleil", couleur: "#C9A460" },
+  { nom: "Lune", symbole: "☽", key: "lune", couleur: "#C8C4D8" },
+  { nom: "Mercure", symbole: "☿", key: "mercure", couleur: "#9B97B0" },
+  { nom: "Vénus", symbole: "♀", key: "venus", couleur: "#C17B8A" },
+  { nom: "Mars", symbole: "♂", key: "mars", couleur: "#E05C5C" },
+  { nom: "Jupiter", symbole: "♃", key: "jupiter", couleur: "#7B9ECB" },
+  { nom: "Saturne", symbole: "♄", key: "saturne", couleur: "#C9A460" }
+];
+
 const NatalChart = ({ onSeeNoeuds }) => {
   const canvasRef = useRef(null);
   const [planeteSelectionnee, setPlaneteSelectionnee] = useState(null);
   const { user } = useAuthContext();
   const { profile, loading } = useProfile(user?.id);
 
-  const planetes = useMemo(() => getPlanetesDuJour(), []);
+  // Calcule le thème natal réel
+  const themeNatal = useMemo(() => {
+    if (!profile?.date_naissance) return null;
+    return getThemeNatal(
+      profile.date_naissance,
+      profile.heure_naissance || '12:00',
+      profile.latitude || 48.8566,
+      profile.longitude || 2.3522
+    );
+  }, [profile?.date_naissance, profile?.heure_naissance, profile?.latitude, profile?.longitude]);
+
+  // Planètes natales formatées
+  const planetesNatales = useMemo(() => {
+    if (!themeNatal) return [];
+    return PLANETES_NATALES.map(def => {
+      const data = themeNatal[def.key];
+      if (!data) return null;
+      const nomClean = def.nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '');
+      const signeClean = (data.signe || '').split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '');
+      const cleAspect = `${nomClean}_${signeClean}`;
+      const interpretation = INTERPRETATIONS[cleAspect] || ASPECTS_TEXTE[cleAspect] || `Ton ${def.nom} en ${data.signe} façonne ton être d'une manière qui n'appartient qu'à toi.`;
+      const maisonTexte = data.maison ? `Maison ${data.maison} · ${SIGNIFICATIONS_MAISONS[data.maison] || ''}` : null;
+      const lectureMaison = data.maison ? LECTURES_MAISONS[`${def.nom}_maison_${data.maison}_detail`] : null;
+      
+      return {
+        nom: def.nom,
+        symbole: def.symbole,
+        signe: data.signe,
+        degres: data.degres,
+        minutes: data.minutes,
+        position: `${data.degres}°${data.minutes ? data.minutes + "'" : ''} ${data.signe}`,
+        couleur: def.couleur,
+        maison: data.maison,
+        maisonTexte,
+        interpretation,
+        lectureMaison
+      };
+    }).filter(Boolean);
+  }, [themeNatal]);
 
   const displayData = {
     nom: profile?.nom || "Voyageur",
     date_naissance: profile?.date_naissance
-  };
-
-  const getInterpretation = (p) => {
-    if (!p || !p.nom || !p.signe) return "Une influence mystérieuse guide ton ciel.";
-    const nomClean = p.nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '');
-    const signeClean = p.signe.split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '');
-    const key = `${nomClean}_${signeClean}`;
-    return INTERPRETATIONS[key] || `Ton ${p.nom} en ${p.signe} apporte une vibration unique et personnelle à ton thème.`;
   };
 
   useEffect(() => {
@@ -78,7 +120,6 @@ const NatalChart = ({ onSeeNoeuds }) => {
     const centre = size / 2;
     ctx.clearRect(0, 0, size, size);
 
-    // Cercles de structure
     [118, 98, 58, 20].forEach((r) => {
       ctx.beginPath();
       ctx.arc(centre, centre, r, 0, Math.PI * 2);
@@ -89,7 +130,6 @@ const NatalChart = ({ onSeeNoeuds }) => {
 
     const degToRad = (deg) => ((deg - 90) * Math.PI) / 180;
 
-    // Signes du Zodiaque
     const symboles = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
     symboles.forEach((s, i) => {
       const angle = degToRad(i * 30 + 15);
@@ -100,12 +140,15 @@ const NatalChart = ({ onSeeNoeuds }) => {
       ctx.fillText(s + '\uFE0E', centre + 108 * Math.cos(angle), centre + 108 * Math.sin(angle));
     });
 
-    // Placement des Planètes
-    const planets = (planetes && planetes.length > 0) ? planetes : [];
-    planets.forEach((p, i) => {
-      const angle = degToRad((i * (360 / planets.length)));
-      const x = centre + 78 * Math.cos(angle);
-      const y = centre + 78 * Math.sin(angle);
+    // Placement réel des planètes selon leur position natale
+    const planets = (planetesNatales && planetesNatales.length > 0) ? planetesNatales : [];
+    planets.forEach((p) => {
+      const signeIndex = ["Bélier","Taureau","Gémeaux","Cancer","Lion","Vierge","Balance","Scorpion","Sagittaire","Capricorne","Verseau","Poissons"].indexOf(p.signe);
+      const degresDansSigne = signeIndex * 30 + (p.degres || 0);
+      const angle = degToRad(degresDansSigne);
+      const rayon = 78;
+      const x = centre + rayon * Math.cos(angle);
+      const y = centre + rayon * Math.sin(angle);
       
       ctx.beginPath();
       ctx.arc(x, y, 11, 0, Math.PI * 2);
@@ -129,7 +172,7 @@ const NatalChart = ({ onSeeNoeuds }) => {
     ctx.font = 'bold 8px sans-serif';
     ctx.fillText('ASTRA', centre, centre);
 
-  }, [loading, planetes]);
+  }, [planetesNatales]);
 
   if (loading) return <div className="h-full flex items-center justify-center text-gold italic">Synchronisation...</div>;
 
@@ -154,7 +197,7 @@ const NatalChart = ({ onSeeNoeuds }) => {
 
       {/* Planet List */}
       <div className="mt-8 space-y-3">
-        {planetes?.map((p, i) => (
+        {planetesNatales?.map((p, i) => (
           <div 
             key={i} 
             onClick={() => setPlaneteSelectionnee(p)}
@@ -165,7 +208,10 @@ const NatalChart = ({ onSeeNoeuds }) => {
             </div>
             <div className="flex-1 text-left">
               <p className="text-cream text-[13px] font-serif">{p.nom}</p>
-              <p className="text-muted text-[10px]">en {p.signe}</p>
+              <p className="text-muted text-[10px]">
+                en {p.signe}
+                {p.maison && <span className="text-gold/40 ml-1">· M{p.maison}</span>}
+              </p>
             </div>
             <p className="text-[10px] text-gold/50 font-sans">{p.position || ''}</p>
           </div>
@@ -202,10 +248,18 @@ const NatalChart = ({ onSeeNoeuds }) => {
           >
             <div className="text-6xl text-gold mb-4" style={{ fontVariantEmoji: 'text' }}>{planeteSelectionnee.symbole}</div>
             <h2 className="font-serif text-xl text-gold mb-1">{planeteSelectionnee.nom}</h2>
-            <p className="text-muted text-[10px] uppercase tracking-widest mb-4">en {planeteSelectionnee.signe}</p>
+            <p className="text-muted text-[10px] uppercase tracking-widest mb-2">
+              en {planeteSelectionnee.signe}
+              {planeteSelectionnee.maison && (
+                <span className="text-gold/50"> · Maison {planeteSelectionnee.maison}</span>
+              )}
+            </p>
+            {planeteSelectionnee.maisonTexte && (
+              <p className="text-[9px] text-gold/40 tracking-widest uppercase mb-3">{planeteSelectionnee.maisonTexte}</p>
+            )}
             <div className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent mb-6" />
             <p className="text-cream/90 text-sm leading-relaxed italic font-serif">
-              "{getInterpretation(planeteSelectionnee)}"
+              "{planeteSelectionnee.lectureMaison || planeteSelectionnee.interpretation}"
             </p>
             <button 
               onClick={() => setPlaneteSelectionnee(null)}

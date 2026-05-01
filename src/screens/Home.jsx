@@ -6,9 +6,16 @@ import PlanetCircle from '../components/ui/PlanetCircle';
 import AstraSymbol from '../components/ui/AstraSymbol';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
-import { getHoroscopeComplet } from '../services/horoscopeService';
-import { getPlanetesDuJour } from '../services/astroService';
+import { getPlanetesDuJour, getThemeNatal } from '../services/astroService';
+import { generateMessageDuJour, generateMessagePersonnalise } from '../services/messageGeneratorService';
+import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS } from '../data/lecturesMaisons';
 import { getSaintDuJour, getPhaseLunaire, getSaisonActuelle } from '../data/identiteFrancaise';
+
+const SIGNES = [
+  "Bélier", "Taureau", "Gémeaux", "Cancer",
+  "Lion", "Vierge", "Balance", "Scorpion",
+  "Sagittaire", "Capricorne", "Verseau", "Poissons"
+];
 
 // Banques de messages universels (Saisons) - lazy loading par saison
 const MESSAGES_SAISONNIERS = {
@@ -34,6 +41,28 @@ const INFOS_MOUVEMENTS = {
   "Saturne": "Saturne demande de la structure et de la patience. Les efforts d'aujourd'hui sont les succès de demain.",
 };
 
+// Helper pour trouver la maison d'une planète
+function getMaison(degrees, maisons) {
+  if (!maisons?.length) return null;
+  for (let i = 0; i < 12; i++) {
+    const debut = maisons[i];
+    const fin = maisons[(i + 1) % 12];
+    const d = ((degrees % 360) + 360) % 360;
+    if (debut <= fin) {
+      if (d >= debut && d < fin) return i + 1;
+    } else {
+      if (d >= debut || d < fin) return i + 1;
+    }
+  }
+  return 1;
+}
+
+function getMaisonTransit(planete, maisonsNatales) {
+  if (!maisonsNatales?.length) return null;
+  const degrees = planete.degres + (SIGNES.indexOf(planete.signe) * 30);
+  return getMaison(degrees, maisonsNatales);
+}
+
 // Cache et fallback pour les messages
 let cachedMessage = "Les astres murmurent à votre âme aujourd'hui.";
 
@@ -45,19 +74,16 @@ const getMessageUniverselSaisonnier = () => {
   const mois = maintenant.getMonth() + 1;
   const jour = maintenant.getDate();
 
-  // Mapping saison -> clé du dictionnaire
   let saisonKey;
   if ([3, 4, 5].includes(mois)) saisonKey = 'printemps';
   else if ([6, 7, 8].includes(mois)) saisonKey = 'ete';
   else if ([9, 10, 11].includes(mois)) saisonKey = 'automne';
   else saisonKey = 'hiver';
 
-  // Initialiser le cache
   if (!getMessageUniverselSaisonnier.cache) {
     getMessageUniverselSaisonnier.cache = {};
   }
 
-  // Si déjà en cache, retourner le message
   if (getMessageUniverselSaisonnier.cache[saisonKey]) {
     const messages = getMessageUniverselSaisonnier.cache[saisonKey];
     const cleJour = `${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`;
@@ -69,10 +95,8 @@ const getMessageUniverselSaisonnier = () => {
     return cachedMessage;
   }
 
-  // Lazy load le module
   MESSAGES_SAISONNIERS[saisonKey]().then(module => {
     let messages = module.default || module;
-    // Gérer les exports nommés (MESSAGES_PRINTEMPS, MESSAGES_ETE, etc.)
     if (messages.MESSAGES_PRINTEMPS) messages = messages.MESSAGES_PRINTEMPS;
     else if (messages.MESSAGES_ETE) messages = messages.MESSAGES_ETE;
     else if (messages.MESSAGES_AUTOMNE) messages = messages.MESSAGES_AUTOMNE;
@@ -85,9 +109,7 @@ const getMessageUniverselSaisonnier = () => {
     if (typeof message === 'string') {
       cachedMessage = message;
     }
-  }).catch(() => {
-    // Silencieux - garde le fallback
-  });
+  }).catch(() => {});
 
   return cachedMessage;
 };
@@ -97,30 +119,60 @@ const Home = ({ onHoroscope, onProfil }) => {
   const { profile, loading } = useProfile(user?.id);
   const [selectedPlanet, setSelectedPlanet] = useState(null);
 
-  // Données communes
-  const planetes = useMemo(() => getPlanetesDuJour(), []);
-  const saint = useMemo(() => getSaintDuJour(), []);
-  const phase = useMemo(() => getPhaseLunaire(), []);
-  const saison = useMemo(() => getSaisonActuelle(), []);
-  
-  // 1. La pensée universelle (Même pour tous)
-  const penseeDuJour = useMemo(() => getMessageUniverselSaisonnier(), []);
+  const todayStr = new Date().toISOString().split('T')[0];
 
-  // 2. Les données personnalisées (Uniquement si le profil est chargé)
+  const planetes = useMemo(() => getPlanetesDuJour(), [todayStr]);
+  const saint = useMemo(() => getSaintDuJour(), [todayStr]);
+  const phase = useMemo(() => getPhaseLunaire(), [todayStr]);
+  const saison = useMemo(() => getSaisonActuelle(), [todayStr]);
+  
+  const penseeDuJour = useMemo(() => getMessageUniverselSaisonnier(), [todayStr]);
+
   const displayNom = profile?.nom || user?.user_metadata?.nom || "Voyageur";
   const signeSolaire = profile?.signe_solaire || "Bélier";
   const signeLunaire = profile?.signe_lunaire || "Lune";
   const ascendant = profile?.ascendant || "Ascendant";
   const avatarUrl = profile?.avatar_url;
 
-  // 3. L'horoscope personnalisé (Différent par signe)
-  const horoscope = useMemo(() => getHoroscopeComplet(signeSolaire), [signeSolaire]);
+  // Thème natal pour les maisons
+  const themeNatal = useMemo(() => {
+    if (!profile?.date_naissance) return null;
+    return getThemeNatal(profile.date_naissance, profile.heure_naissance || '12:00', profile.latitude || 48.8566, profile.longitude || 2.3522);
+  }, [profile?.date_naissance, profile?.heure_naissance, profile?.latitude, profile?.longitude]);
+
+  // Planètes personnalisées avec maisons natales
+  const planetesPersonnalisees = useMemo(() => {
+    if (!themeNatal?.maisons?.length) return planetes;
+    return planetes.map(planete => {
+      const maison = getMaisonTransit(planete, themeNatal.maisons);
+      if (maison) {
+        const cle = `${planete.nom}_maison_${maison}`;
+        const lecture = LECTURES_MAISONS[cle];
+        return {
+          ...planete,
+          maison,
+          aspectPersonnalise: lecture || planete.aspect
+        };
+      }
+      return planete;
+    });
+  }, [planetes, themeNatal]);
+
+  const messagePersonnalise = useMemo(() => {
+    if (!profile) return null;
+    return generateMessagePersonnalise(profile);
+  }, [profile, todayStr]);
+
+  const messageFinal = useMemo(() => {
+    return messagePersonnalise?.message
+      || generateMessageDuJour(signeSolaire);
+  }, [messagePersonnalise, signeSolaire, todayStr]);
 
   const dateAujourdhui = useMemo(() => {
     return new Intl.DateTimeFormat('fr-FR', {
       weekday: 'short', day: 'numeric', month: 'long', year: 'numeric'
     }).format(new Date());
-  }, []);
+  }, [todayStr]);
 
   if (loading) {
     return (
@@ -178,19 +230,26 @@ const Home = ({ onHoroscope, onProfil }) => {
         </div>
         <Card className="relative overflow-hidden border-gold/10">
           <p className="italic font-serif text-sm text-cream leading-[1.85] relative z-10">
-            {horoscope?.message || "Les étoiles préparent votre chemin..."}
+            {messageFinal || "Les étoiles préparent votre chemin..."}
           </p>
+          {messagePersonnalise?.maison && (
+            <p className="text-[9px] text-gold/40 tracking-widest uppercase mt-2 font-sans text-right">
+              {messagePersonnalise.planete.nom} · maison {messagePersonnalise.maison}
+            </p>
+          )}
           <div className="flex gap-2 mt-4 flex-wrap relative z-10">
-            {horoscope?.tags?.map((tag) => (<Tag key={tag}>{tag}</Tag>))}
+            {messagePersonnalise?.source === 'maison' && (
+              <Tag>Maison {messagePersonnalise.maison}</Tag>
+            )}
           </div>
         </Card>
       </div>
 
-      {/* Mouvements Célestes */}
+      {/* Mouvements Célestes Personnalisés */}
       <div className="space-y-3">
         <p className="text-[9px] text-muted tracking-[2px] uppercase ml-1 font-sans">Mouvements Célestes</p>
         <div className="space-y-2">
-          {planetes.map((planete, index) => (
+          {planetesPersonnalisees.map((planete, index) => (
             <Card
               key={index}
               onClick={() => setSelectedPlanet(planete)}
@@ -200,11 +259,16 @@ const Home = ({ onHoroscope, onProfil }) => {
               <div className="flex-1 text-left">
                 <div className="flex items-center gap-2">
                   <p className="text-cream text-[13px] font-serif">{planete.nom}</p>
+                  {planete.maison && (
+                    <span className="text-[8px] text-gold/40 tracking-wider">M{planete.maison}</span>
+                  )}
                   {planete.retrograde && (
                     <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 uppercase">Rétrograde</span>
                   )}
                 </div>
-                <p className="text-muted text-[10px] leading-snug font-sans mt-0.5">{planete.aspect}</p>
+                <p className="text-muted text-[10px] leading-snug font-sans mt-0.5">
+                  {planete.aspectPersonnalise || planete.aspect}
+                </p>
               </div>
               <span className="text-gold/30 text-lg group-hover:text-gold transition-colors px-2">›</span>
             </Card>
@@ -247,10 +311,15 @@ const Home = ({ onHoroscope, onProfil }) => {
                <PlanetCircle size="lg" symbole={selectedPlanet.symbole} couleur={selectedPlanet.couleur} />
             </div>
             <h2 className="font-serif text-xl text-gold mb-1">{selectedPlanet.nom}</h2>
-            <p className="text-muted text-[10px] uppercase tracking-widest mb-4">{selectedPlanet.aspect}</p>
+            {selectedPlanet.maison && (
+              <p className="text-gold/50 text-[10px] uppercase tracking-widest mb-2">Maison {selectedPlanet.maison} · {SIGNIFICATIONS_MAISONS[selectedPlanet.maison]}</p>
+            )}
+            <p className="text-muted text-[10px] uppercase tracking-widest mb-4">
+              {selectedPlanet.position || selectedPlanet.aspect}
+            </p>
             <div className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent mb-6" />
             <p className="text-cream/90 text-sm leading-relaxed italic">
-              "{INFOS_MOUVEMENTS[selectedPlanet.nom] || "Cette configuration influence votre croissance."}"
+              "{selectedPlanet.aspectPersonnalise || INFOS_MOUVEMENTS[selectedPlanet.nom] || "Cette configuration influence votre croissance."}"
             </p>
             <button onClick={() => setSelectedPlanet(null)} className="mt-8 text-[10px] text-gold/50 uppercase tracking-[2px] border border-gold/20 px-8 py-2 rounded-full">Fermer</button>
           </div>

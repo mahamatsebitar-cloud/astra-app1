@@ -1,26 +1,10 @@
 import React, { useMemo } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
-import { NOEUDS_LUNAIRES, getPhaseLunaire } from '../data/identiteFrancaise';
+import { getNoeudsLunaires, getThemeNatal } from '../services/astroService';
+import { NOEUDS_LUNAIRES, getPhaseLunaire, getNoeudVariation } from '../data/identiteFrancaise';
+import { SIGNIFICATIONS_MAISONS } from '../data/lecturesMaisons';
 import PremiumGate from '../components/ui/PremiumGate';
-
-// Dictionnaire de correspondance Année -> Axe (Approximation standard)
-const NOEUDS_PAR_ANNEE = {
-  1985: "Taureau_Scorpion", 1986: "Taureau_Scorpion", 1987: "Bélier_Balance",
-  1988: "Poissons_Vierge", 1989: "Verseau_Lion", 1990: "Capricorne_Cancer",
-  1991: "Capricorne_Cancer", 1992: "Sagittaire_Gémeaux", 1993: "Sagittaire_Gémeaux",
-  1994: "Scorpion_Taureau", 1995: "Balance_Bélier", 1996: "Balance_Bélier",
-  1997: "Vierge_Poissons", 1998: "Lion_Verseau", 1999: "Lion_Verseau",
-  2000: "Cancer_Capricorne", 2001: "Cancer_Capricorne", 2002: "Gémeaux_Sagittaire",
-  2003: "Taureau_Scorpion", 2004: "Taureau_Scorpion", 2005: "Bélier_Balance",
-  2006: "Bélier_Balance", 2007: "Poissons_Vierge", 2008: "Verseau_Lion",
-  2009: "Capricorne_Cancer", 2010: "Capricorne_Cancer", 2011: "Sagittaire_Gémeaux",
-  2012: "Scorpion_Taureau", 2013: "Scorpion_Taureau", 2014: "Balance_Bélier",
-  2015: "Balance_Bélier", 2016: "Vierge_Poissons", 2017: "Lion_Verseau",
-  2018: "Cancer_Capricorne", 2019: "Cancer_Capricorne", 2020: "Gémeaux_Sagittaire",
-  2021: "Gémeaux_Sagittaire", 2022: "Taureau_Scorpion", 2023: "Taureau_Scorpion",
-  2024: "Bélier_Balance", 2025: "Poissons_Vierge",
-};
 
 const SYMBOLES_SIGNES = {
   Bélier: "♈", Taureau: "♉", Gémeaux: "♊", Cancer: "♋",
@@ -28,31 +12,42 @@ const SYMBOLES_SIGNES = {
   Sagittaire: "♐", Capricorne: "♑", Verseau: "♒", Poissons: "♓",
 };
 
-const getNoeudNord = (dateNaissance) => {
-  if (!dateNaissance) return null;
-  try {
-    const dateObj = new Date(dateNaissance);
-    if (isNaN(dateObj.getTime())) return null;
-    const annee = dateObj.getFullYear();
-    return NOEUDS_PAR_ANNEE[annee] || null;
-  } catch (error) {
-    console.error("Erreur calcul Noeud Lunaire:", error);
-    return null;
-  }
-};
-
 const NoeudLunaire = ({ onBack, onUpgrade }) => {
   const { user } = useAuthContext();
   const { profile, loading } = useProfile(user?.id);
 
-  // Support des deux formats de nom de clé
   const dateNaissance = profile?.date_naissance || profile?.dateNaissance;
 
-  const noeudsData = useMemo(() => {
+  // Thème natal pour les maisons
+  const themeNatal = useMemo(() => {
     if (!dateNaissance) return null;
-    const cle = getNoeudNord(dateNaissance);
-    return cle ? NOEUDS_LUNAIRES.noeuds[cle] : null;
+    return getThemeNatal(dateNaissance, profile?.heure_naissance || '12:00', profile?.latitude || 48.8566, profile?.longitude || 2.3522);
+  }, [dateNaissance, profile?.heure_naissance, profile?.latitude, profile?.longitude]);
+
+  // Nœuds lunaires réels calculés par formule ELP-2000
+  const noeudsReels = useMemo(() => {
+    if (!dateNaissance) return null;
+    return getNoeudsLunaires(dateNaissance);
   }, [dateNaissance]);
+
+  const noeudsData = useMemo(() => {
+    if (!noeudsReels) return null;
+    const cle = `${noeudsReels.nord.signe}_${noeudsReels.sud.signe}`;
+    const variation = getNoeudVariation(cle);
+    if (!variation) return null;
+    return {
+      nordSigne: noeudsReels.nord.signe,
+      sudSigne: noeudsReels.sud.signe,
+      chemin: variation.chemin,
+      karma: variation.karma,
+      nordDegres: noeudsReels.nord.degres,
+      nordMinutes: noeudsReels.nord.minutes,
+      sudDegres: noeudsReels.sud.degres,
+      sudMinutes: noeudsReels.sud.minutes,
+      nordMaison: themeNatal?.noeudNord?.maison,
+      sudMaison: themeNatal?.noeudSud?.maison
+    };
+  }, [noeudsReels, themeNatal]);
 
   const phaseLunaire = useMemo(() => getPhaseLunaire(), []);
 
@@ -81,9 +76,8 @@ const NoeudLunaire = ({ onBack, onUpgrade }) => {
     );
   }
 
-  const { nord: signeNord, sud: signeSud, chemin, karma } = noeudsData;
-  const symboleNord = SYMBOLES_SIGNES[signeNord] || "✦";
-  const symboleSud = SYMBOLES_SIGNES[signeSud] || "✦";
+  const symboleNord = SYMBOLES_SIGNES[noeudsData.nordSigne] || "✦";
+  const symboleSud = SYMBOLES_SIGNES[noeudsData.sudSigne] || "✦";
 
   const contenuPremium = (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
@@ -105,17 +99,22 @@ const NoeudLunaire = ({ onBack, onUpgrade }) => {
             {symboleNord}
           </span>
           <div>
-            <h2 className="font-serif text-2xl text-cream tracking-wide">{signeNord}</h2>
+            <h2 className="font-serif text-2xl text-cream tracking-wide">{noeudsData.nordSigne}</h2>
             <p className="font-serif text-[11px] text-gold/60 italic">
               L'appel de votre futur
             </p>
+            {noeudsData.nordMaison && (
+              <p className="text-[9px] text-gold/40 tracking-widest uppercase mt-1">
+                Maison {noeudsData.nordMaison} · {SIGNIFICATIONS_MAISONS[noeudsData.nordMaison]}
+              </p>
+            )}
           </div>
         </div>
         
         <div className="h-px bg-gradient-to-r from-gold/30 to-transparent w-full" />
         
         <p className="font-serif text-base text-cream/90 italic leading-relaxed pt-2">
-          « {chemin} »
+          « {noeudsData.chemin} »
         </p>
       </div>
 
@@ -133,17 +132,22 @@ const NoeudLunaire = ({ onBack, onUpgrade }) => {
             {symboleSud}
           </span>
           <div>
-            <h2 className="font-serif text-2xl text-muted/80 tracking-wide">{signeSud}</h2>
+            <h2 className="font-serif text-2xl text-muted/80 tracking-wide">{noeudsData.sudSigne}</h2>
             <p className="font-serif text-[11px] text-muted/40 italic">
               Vos acquis et mémoires
             </p>
+            {noeudsData.sudMaison && (
+              <p className="text-[9px] text-muted/30 tracking-widest uppercase mt-1">
+                Maison {noeudsData.sudMaison} · {SIGNIFICATIONS_MAISONS[noeudsData.sudMaison]}
+              </p>
+            )}
           </div>
         </div>
 
         <div className="h-px bg-white/5 w-full" />
 
         <p className="font-serif text-sm text-muted/60 italic leading-relaxed pt-2">
-          « {karma} »
+          « {noeudsData.karma} »
         </p>
       </div>
 
@@ -171,7 +175,6 @@ const NoeudLunaire = ({ onBack, onUpgrade }) => {
 
   return (
     <div className="w-full min-h-screen bg-night px-5 py-4 space-y-6 overflow-y-auto pb-20">
-      {/* Header avec bouton retour stylisé */}
       <header className="flex items-center pt-2">
         <button 
             onClick={onBack} 

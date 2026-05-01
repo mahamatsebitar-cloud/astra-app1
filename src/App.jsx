@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PhoneFrame from "./components/layout/PhoneFrame.jsx";
 import { AuthProvider, useAuthContext } from './context/AuthContext';
+import { ProfileProvider } from './context/ProfileContext';
 import { useProfile } from './hooks/useProfile';
 
 // Screens
@@ -201,7 +202,9 @@ const AppContent = () => {
 
 const App = () => (
   <AuthProvider>
-    <AppContent />
+    <ProfileProvider>
+      <AppContent />
+    </ProfileProvider>
   </AuthProvider>
 );
 
