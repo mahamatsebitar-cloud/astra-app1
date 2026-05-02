@@ -8,7 +8,7 @@ import { useProfile } from '../hooks/useProfile';
 import { getHoroscopeComplet } from '../services/horoscopeService';
 import { generateMessagePersonnalise } from '../services/messageGeneratorService';
 import { getPlanetesDuJour, getThemeNatal } from '../services/astroService';
-import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS } from '../data/lecturesMaisons';
+import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS, getVariationHoroscope } from '../data/lecturesMaisons';
 
 const SIGNES = [
   "Bélier", "Taureau", "Gémeaux", "Cancer",
@@ -37,7 +37,6 @@ const ZODIAC_DATES = {
   "Poissons": "19 février — 19 mars"
 };
 
-// Helper pour trouver la maison
 function getMaison(degrees, maisons) {
   if (!maisons?.length) return null;
   for (let i = 0; i < 12; i++) {
@@ -65,6 +64,7 @@ const Horoscope = ({ onBack, onUpgrade }) => {
   
   const signeSolaire = profile?.signe_solaire;
   const todayStr = new Date().toISOString().split('T')[0];
+  const jourAnnee = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
   
   const horoscope = useMemo(() => {
     if (!signeSolaire) return null;
@@ -76,13 +76,11 @@ const Horoscope = ({ onBack, onUpgrade }) => {
     return generateMessagePersonnalise(profile);
   }, [profile]);
 
-  // Thème natal
   const themeNatal = useMemo(() => {
     if (!profile?.date_naissance) return null;
     return getThemeNatal(profile.date_naissance, profile.heure_naissance || '12:00', profile.latitude || 48.8566, profile.longitude || 2.3522);
   }, [profile?.date_naissance, profile?.heure_naissance, profile?.latitude, profile?.longitude]);
 
-  // Planètes du jour
   const planetesDuJour = useMemo(() => getPlanetesDuJour(), [todayStr]);
 
   const dateAujourdhui = useMemo(() => {
@@ -94,7 +92,6 @@ const Horoscope = ({ onBack, onUpgrade }) => {
     return date.charAt(0).toUpperCase() + date.slice(1);
   }, [todayStr]);
 
-  // Domaines personnalisés avec vraies positions planétaires
   const domaines = useMemo(() => {
     if (!horoscope) return [];
     
@@ -109,23 +106,23 @@ const Horoscope = ({ onBack, onUpgrade }) => {
     
     const getTexteDomaine = (planete, maison, fallbackTexte) => {
       if (planete && maison) {
-        // Utilise la variante _detail pour l'écran Horoscope
-        const cle = `${planete.nom}_maison_${maison}_detail`;
-        const lecture = LECTURES_MAISONS[cle];
-        if (lecture) return { texte: lecture, maison, planete: planete.nom };
+        const nomSansAccent = planete.nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const cleBase = `${nomSansAccent}_maison_${maison}`;
+        const variation = getVariationHoroscope(cleBase, jourAnnee);
+        if (variation) return { texte: variation, maison, planete: planete.nom };
       }
       return { texte: fallbackTexte, maison: null, planete: null };
     };
     
-    const amour = getTexteDomaine(venus, maisonVenus, horoscope.amour?.texte || "Vénus reste discrète aujourd'hui.");
-    const travail = getTexteDomaine(mars, maisonMars, horoscope.travail?.texte || "Persévérez dans vos efforts actuels.");
-    const bienEtre = getTexteDomaine(lune, maisonLune, horoscope.bienEtre?.texte || "Prenez un moment pour respirer.");
+    const amour = getTexteDomaine(venus, maisonVenus, "Vénus reste discrète aujourd'hui.");
+    const travail = getTexteDomaine(mars, maisonMars, "Persévérez dans vos efforts actuels.");
+    const bienEtre = getTexteDomaine(lune, maisonLune, "Prenez un moment pour respirer.");
     
     return [
       {
         label: "Amour",
         texte: amour.texte,
-        score: horoscope.amour?.score || 50,
+        score: Math.round((horoscope.amour?.score || 50) / 20),
         couleur: "#C17B8A",
         icone: "♥",
         planete: amour.planete || "Vénus",
@@ -135,7 +132,7 @@ const Horoscope = ({ onBack, onUpgrade }) => {
       {
         label: "Travail",
         texte: travail.texte,
-        score: horoscope.travail?.score || 50,
+        score: Math.round((horoscope.travail?.score || 50) / 20),
         couleur: "#7B9ECB",
         icone: "◆",
         planete: travail.planete || "Mars",
@@ -145,7 +142,7 @@ const Horoscope = ({ onBack, onUpgrade }) => {
       {
         label: "Bien-être",
         texte: bienEtre.texte,
-        score: horoscope.bienEtre?.score || 50,
+        score: Math.round((horoscope.bienEtre?.score || 50) / 20),
         couleur: "#7BB8A0",
         icone: "●",
         planete: bienEtre.planete || "Lune",
@@ -153,7 +150,7 @@ const Horoscope = ({ onBack, onUpgrade }) => {
         maisonTexte: bienEtre.maison ? SIGNIFICATIONS_MAISONS[bienEtre.maison] : null
       }
     ];
-  }, [horoscope, planetesDuJour, themeNatal]);
+  }, [horoscope, planetesDuJour, themeNatal, jourAnnee]);
 
   if (loading) {
     return (
@@ -260,7 +257,7 @@ const Horoscope = ({ onBack, onUpgrade }) => {
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] text-muted/50 font-serif italic">{domaine.score}%</span>
+                  <span className="text-[11px] text-muted/50 font-serif italic">{domaine.score * 20}%</span>
                 </div>
                 
                 <p className="text-[13px] text-cream/70 leading-relaxed font-sans group-hover:text-cream transition-colors">

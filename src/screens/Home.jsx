@@ -8,7 +8,7 @@ import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { getPlanetesDuJour, getThemeNatal } from '../services/astroService';
 import { generateMessageDuJour, generateMessagePersonnalise } from '../services/messageGeneratorService';
-import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS } from '../data/lecturesMaisons';
+import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS, getVariationMouvement } from '../data/lecturesMaisons';
 import { getSaintDuJour, getPhaseLunaire, getSaisonActuelle } from '../data/identiteFrancaise';
 
 const SIGNES = [
@@ -17,7 +17,6 @@ const SIGNES = [
   "Sagittaire", "Capricorne", "Verseau", "Poissons"
 ];
 
-// Banques de messages universels (Saisons) - lazy loading par saison
 const MESSAGES_SAISONNIERS = {
   printemps: () => import('../data/messagesPrintemps'),
   ete: () => import('../data/messagesEte'),
@@ -31,6 +30,11 @@ const ZODIAC_SYMBOLS = {
   "Sagittaire": "♐", "Capricorne": "♑", "Verseau": "♒", "Poissons": "♓"
 };
 
+const PLANETE_SYMBOLS = {
+  "Lune": "☽", "Mercure": "☿", "Vénus": "♀", "Mars": "♂",
+  "Jupiter": "♃", "Saturne": "♄"
+};
+
 const INFOS_MOUVEMENTS = {
   "Soleil": "Le Soleil illumine votre secteur actuel, apportant vitalité et clarté à vos projets personnels.",
   "Lune": "La Lune influence votre intuition et vos marées émotionnelles. Écoutez votre ressenti aujourd'hui.",
@@ -41,7 +45,6 @@ const INFOS_MOUVEMENTS = {
   "Saturne": "Saturne demande de la structure et de la patience. Les efforts d'aujourd'hui sont les succès de demain.",
 };
 
-// Helper pour trouver la maison d'une planète
 function getMaison(degrees, maisons) {
   if (!maisons?.length) return null;
   for (let i = 0; i < 12; i++) {
@@ -63,12 +66,8 @@ function getMaisonTransit(planete, maisonsNatales) {
   return getMaison(degrees, maisonsNatales);
 }
 
-// Cache et fallback pour les messages
 let cachedMessage = "Les astres murmurent à votre âme aujourd'hui.";
 
-/**
- * MESSAGE UNIVERSEL (Pensée du jour) - Lazy loading par saison
- */
 const getMessageUniverselSaisonnier = () => {
   const maintenant = new Date();
   const mois = maintenant.getMonth() + 1;
@@ -120,6 +119,7 @@ const Home = ({ onHoroscope, onProfil }) => {
   const [selectedPlanet, setSelectedPlanet] = useState(null);
 
   const todayStr = new Date().toISOString().split('T')[0];
+  const jourAnnee = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
 
   const planetes = useMemo(() => getPlanetesDuJour(), [todayStr]);
   const saint = useMemo(() => getSaintDuJour(), [todayStr]);
@@ -134,29 +134,28 @@ const Home = ({ onHoroscope, onProfil }) => {
   const ascendant = profile?.ascendant || "Ascendant";
   const avatarUrl = profile?.avatar_url;
 
-  // Thème natal pour les maisons
   const themeNatal = useMemo(() => {
     if (!profile?.date_naissance) return null;
     return getThemeNatal(profile.date_naissance, profile.heure_naissance || '12:00', profile.latitude || 48.8566, profile.longitude || 2.3522);
   }, [profile?.date_naissance, profile?.heure_naissance, profile?.latitude, profile?.longitude]);
 
-  // Planètes personnalisées avec maisons natales
   const planetesPersonnalisees = useMemo(() => {
     if (!themeNatal?.maisons?.length) return planetes;
     return planetes.map(planete => {
       const maison = getMaisonTransit(planete, themeNatal.maisons);
       if (maison) {
-        const cle = `${planete.nom}_maison_${maison}`;
-        const lecture = LECTURES_MAISONS[cle];
+        const nomSansAccent = planete.nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const cleBase = `${nomSansAccent}_maison_${maison}`;
+        const variation = getVariationMouvement(cleBase, jourAnnee);
         return {
           ...planete,
           maison,
-          aspectPersonnalise: lecture || planete.aspect
+          aspectPersonnalise: variation || planete.aspect
         };
       }
       return planete;
     });
-  }, [planetes, themeNatal]);
+  }, [planetes, themeNatal, jourAnnee]);
 
   const messagePersonnalise = useMemo(() => {
     if (!profile) return null;
@@ -167,6 +166,14 @@ const Home = ({ onHoroscope, onProfil }) => {
     return messagePersonnalise?.message
       || generateMessageDuJour(signeSolaire);
   }, [messagePersonnalise, signeSolaire, todayStr]);
+
+  // Planète active du jour pour le tag dynamique
+  const planeteActive = useMemo(() => {
+    if (messagePersonnalise?.planete) {
+      return messagePersonnalise.planete;
+    }
+    return null;
+  }, [messagePersonnalise]);
 
   const dateAujourdhui = useMemo(() => {
     return new Intl.DateTimeFormat('fr-FR', {
@@ -200,7 +207,7 @@ const Home = ({ onHoroscope, onProfil }) => {
         </div>
       </div>
 
-      {/* Card Signe Principal (Personnalisé) */}
+      {/* Card Signe Principal */}
       <Card className="flex items-center gap-4 border-gold/20 bg-gradient-to-r from-card to-[#1A1D3D]">
         <div className="w-14 h-14 rounded-full border border-gold/30 flex items-center justify-center bg-[#141731] shrink-0">
           <span className="text-gold text-2xl" style={{ fontVariantEmoji: 'text' }}>{ZODIAC_SYMBOLS[signeSolaire]}</span>
@@ -221,12 +228,19 @@ const Home = ({ onHoroscope, onProfil }) => {
         )}
       </Card>
 
-      {/* Horoscope Personnalisé (Différent pour chaque utilisateur) */}
+      {/* Horoscope Personnalisé */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <span className="text-[9px] text-gold tracking-[2px] uppercase font-bold">Votre ciel aujourd'hui</span>
           <div className="flex-1 h-px bg-[#1C2040]" />
-          <Tag><span className="astro-symbol">♄{"\uFE0E"}</span> Saturne actif</Tag>
+          {planeteActive ? (
+            <Tag>
+              <span className="astro-symbol">{PLANETE_SYMBOLS[planeteActive.nom] || "✦"}{"\uFE0E"}</span> {planeteActive.nom} active
+              {messagePersonnalise?.maison && <span className="ml-1 text-gold/50">· M{messagePersonnalise.maison}</span>}
+            </Tag>
+          ) : (
+            <Tag><span className="astro-symbol">♄{"\uFE0E"}</span> Saturne actif</Tag>
+          )}
         </div>
         <Card className="relative overflow-hidden border-gold/10">
           <p className="italic font-serif text-sm text-cream leading-[1.85] relative z-10">
@@ -245,7 +259,7 @@ const Home = ({ onHoroscope, onProfil }) => {
         </Card>
       </div>
 
-      {/* Mouvements Célestes Personnalisés */}
+      {/* Mouvements Célestes */}
       <div className="space-y-3">
         <p className="text-[9px] text-muted tracking-[2px] uppercase ml-1 font-sans">Mouvements Célestes</p>
         <div className="space-y-2">
@@ -276,7 +290,7 @@ const Home = ({ onHoroscope, onProfil }) => {
         </div>
       </div>
 
-      {/* Pensée du Jour (Universelle) + Saison */}
+      {/* Pensée du Jour + Saison */}
       <div className="border-t border-border/20 pt-6 mt-2 space-y-6">
         <div>
           <p className="text-[9px] text-muted/40 tracking-[2px] uppercase text-center font-sans mb-3">Pensée du jour</p>
