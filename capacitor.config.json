@@ -1,5 +1,8 @@
 {
-  "appId": "com.nouren.astra",
-  "appName": "Astra",
-  "webDir": "dist"
+  "appId": "com.nouren.app",
+  "appName": "astra-app",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
 }
