@@ -23,6 +23,9 @@ import Profil from './screens/Profil';
 import NoeudLunaire from './screens/NoeudLunaire';
 import Abonnement from './screens/Abonnement';
 
+// Firebase pour les notifications
+import { saveToken } from './services/notificationService';
+
 const PUBLIC_SCREENS = ['splash', 'login', 'onb1', 'onb2', 'onb3', 'loading_theme', 'onbInvit'];
 const ONBOARDING_SCREENS = ['onb1', 'onb2', 'onb3', 'loading_theme', 'onbInvit'];
 const PROTECTED_SCREENS = ['home', 'natal', 'horoscope', 'compat', 'profil', 'noeud_lunaire', 'abonnement'];
@@ -65,6 +68,42 @@ const AppContent = () => {
     };
     if (isAuthenticated) processInvite();
   }, [isAuthenticated, user?.id]);
+
+  // ━━━ INITIALISATION NOTIFICATIONS PUSH ━━━
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const initNotifications = async () => {
+      try {
+        if ('serviceWorker' in navigator && 'PushManager' in window) {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            const registration = await navigator.serviceWorker.ready;
+            let subscription = await registration.pushManager.getSubscription();
+            
+            if (!subscription) {
+              subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: 'BElNVxN3gT4JmMNx4Gq5YdOsl_9LJHnFJP1Y2M3N6K7p8QrStUvWxYzAbCdEfGhIjKlMnOpQrStUvWxYz1234'
+              });
+            }
+            
+            if (subscription) {
+              const token = subscription.endpoint;
+              await saveToken(user.id, token);
+              console.log('✅ Notification token saved');
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Notification init:', err);
+      }
+    };
+
+    // Demande la permission après 3 secondes (pas au chargement)
+    const timer = setTimeout(initNotifications, 3000);
+    return () => clearTimeout(timer);
+  }, [user?.id]);
 
   // Scroll Reset à chaque changement d'écran
   useEffect(() => {
