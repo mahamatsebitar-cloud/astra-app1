@@ -38,7 +38,7 @@ jobs:
           cat > capacitor.config.json << 'EOF'
           {
             "appId": "com.nouren.astra",
-            "appName": "astra-app",
+            "appName": "Astra",
             "webDir": "dist",
             "server": {
               "androidScheme": "https"
@@ -57,7 +57,37 @@ jobs:
       - name: Inject Firebase Config
         run: |
           mkdir -p android/app
-          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
+          cat > android/app/google-services.json << 'FIREBASE_EOF'
+          {
+            "project_info": {
+              "project_number": "1033858955559",
+              "project_id": "astra-app-baeae",
+              "storage_bucket": "astra-app-baeae.firebasestorage.app"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:1033858955559:android:e90a39a216b422bf6c5102",
+                  "android_client_info": {
+                    "package_name": "com.nouren.astra"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyAH5c_MnL3yqHE18YVua9-U5zIL52s84zI"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          FIREBASE_EOF
 
       - name: Sync Capacitor
         run: npx cap sync android
