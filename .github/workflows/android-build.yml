@@ -37,8 +37,8 @@ jobs:
         run: |
           cat > capacitor.config.json << 'EOF'
           {
-            "appId": "fr.astra.app",
-            "appName": "Astra",
+            "appId": "com.nouren.astra",
+            "appName": "astra-app",
             "webDir": "dist",
             "server": {
               "androidScheme": "https"
