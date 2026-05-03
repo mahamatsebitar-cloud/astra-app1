@@ -8,7 +8,7 @@ import { useProfile } from '../hooks/useProfile';
 import { getHoroscopeComplet } from '../services/horoscopeService';
 import { generateMessagePersonnalise } from '../services/messageGeneratorService';
 import { getPlanetesDuJour, getThemeNatal } from '../services/astroService';
-import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS, getVariationHoroscope } from '../data/lecturesMaisons';
+import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS, getVariationHoroscope, getVariationMouvement } from '../data/lecturesMaisons';
 
 const SIGNES = [
   "Bélier", "Taureau", "Gémeaux", "Cancer",
@@ -35,6 +35,11 @@ const ZODIAC_DATES = {
   "Capricorne": "22 décembre — 19 janvier",
   "Verseau": "20 janvier — 18 février",
   "Poissons": "19 février — 19 mars"
+};
+
+const PLANETE_SYMBOLS = {
+  "Lune": "☽", "Mercure": "☿", "Vénus": "♀", "Mars": "♂",
+  "Jupiter": "♃", "Saturne": "♄"
 };
 
 function getMaison(degrees, maisons) {
@@ -65,6 +70,8 @@ const Horoscope = ({ onBack, onUpgrade }) => {
   const signeSolaire = profile?.signe_solaire;
   const todayStr = new Date().toISOString().split('T')[0];
   const jourAnnee = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const semaine = Math.floor(jourAnnee / 7);
+  const mois = new Date().getMonth();
   
   const horoscope = useMemo(() => {
     if (!signeSolaire) return null;
@@ -82,6 +89,87 @@ const Horoscope = ({ onBack, onUpgrade }) => {
   }, [profile?.date_naissance, profile?.heure_naissance, profile?.latitude, profile?.longitude]);
 
   const planetesDuJour = useMemo(() => getPlanetesDuJour(), [todayStr]);
+
+  // Transit dominant du jour
+  const transitDominant = useMemo(() => {
+    if (!themeNatal?.maisons?.length || !planetesDuJour?.length) return null;
+    
+    const priorites = ["Lune", "Mars", "Vénus", "Jupiter", "Saturne", "Mercure"];
+    
+    for (const nom of priorites) {
+      const planete = planetesDuJour.find(p => p.nom === nom);
+      if (!planete) continue;
+      const maison = getMaisonTransit(planete, themeNatal.maisons);
+      if (maison) {
+        const nomSansAccent = planete.nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const cleBase = `${nomSansAccent}_maison_${maison}`;
+        const variation = getVariationMouvement(cleBase, jourAnnee);
+        const symbole = PLANETE_SYMBOLS[planete.nom] || "✦";
+        const signification = SIGNIFICATIONS_MAISONS[maison] || "";
+        
+        return {
+          planete: planete.nom,
+          symbole,
+          signe: planete.signe,
+          maison,
+          signification,
+          texte: variation || LECTURES_MAISONS[cleBase] || `${planete.nom} en ${planete.signe} influence ta journée.`
+        };
+      }
+    }
+    return null;
+  }, [planetesDuJour, themeNatal, jourAnnee]);
+
+  // Perspective hebdomadaire personnalisée
+  const perspectiveHebdo = useMemo(() => {
+    if (!themeNatal?.maisons?.length || !planetesDuJour?.length) return null;
+    
+    const planetesLentes = planetesDuJour.filter(p => 
+      ["Mars", "Jupiter", "Saturne"].includes(p.nom)
+    );
+    const planete = planetesLentes[0] || planetesDuJour[0];
+    const maison = getMaisonTransit(planete, themeNatal.maisons);
+    
+    if (!maison) return null;
+    
+    const nomSansAccent = planete.nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const cleBase = `${nomSansAccent}_maison_${maison}`;
+    const variation = getVariationMouvement(cleBase, semaine);
+    const symbole = PLANETE_SYMBOLS[planete.nom] || "✦";
+    
+    return {
+      planete: planete.nom,
+      symbole,
+      signe: planete.signe,
+      maison,
+      texte: variation || LECTURES_MAISONS[cleBase] || `${planete.nom} en ${planete.signe} influence ta semaine.`
+    };
+  }, [planetesDuJour, themeNatal, semaine]);
+
+  // Perspective mensuelle personnalisée
+  const perspectiveMensuelle = useMemo(() => {
+    if (!themeNatal?.maisons?.length || !planetesDuJour?.length) return null;
+    
+    const planete = planetesDuJour.find(p => p.nom === "Jupiter") || 
+                    planetesDuJour.find(p => p.nom === "Saturne") ||
+                    planetesDuJour[0];
+    const maison = getMaisonTransit(planete, themeNatal.maisons);
+    
+    if (!maison) return null;
+    
+    const nomSansAccent = planete.nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const cleBase = `${nomSansAccent}_maison_${maison}`;
+    const variation = getVariationMouvement(cleBase, mois);
+    const symbole = PLANETE_SYMBOLS[planete.nom] || "✦";
+    
+    return {
+      planete: planete.nom,
+      symbole,
+      signe: planete.signe,
+      maison,
+      texte: variation || LECTURES_MAISONS[cleBase] || `${planete.nom} en ${planete.signe} colore ton mois.`
+    };
+  }, [planetesDuJour, themeNatal, mois]);
 
   const dateAujourdhui = useMemo(() => {
     const date = new Intl.DateTimeFormat('fr-FR', {
@@ -235,6 +323,38 @@ const Horoscope = ({ onBack, onUpgrade }) => {
         </div>
       )}
 
+      {/* Transit dominant du jour (Premium) */}
+      <PremiumGate 
+        featureKey="transits_personnels" 
+        onUpgrade={onUpgrade} 
+        preview={true}
+      >
+        {transitDominant && (
+          <div className="mb-10 animate-in fade-in slide-in-from-bottom-2 duration-700">
+            <div className="flex items-center gap-3 opacity-30 mb-4">
+              <p className="text-[9px] text-muted tracking-[3px] uppercase font-bold whitespace-nowrap">Votre transit dominant</p>
+              <div className="h-px bg-white/10 w-full" />
+            </div>
+            <Card className="bg-gradient-to-br from-[#120E22] to-[#1C2040] border-gold/20 p-5">
+              <div className="flex items-start gap-4 mb-3">
+                <span className="text-3xl text-gold mt-1">{transitDominant.symbole}</span>
+                <div>
+                  <p className="font-serif text-base text-cream">
+                    {transitDominant.planete} en {transitDominant.signe}
+                  </p>
+                  <p className="text-[9px] text-gold/40 tracking-widest uppercase mt-0.5">
+                    Maison {transitDominant.maison} · {transitDominant.signification}
+                  </p>
+                </div>
+              </div>
+              <p className="text-[13px] text-cream/80 leading-relaxed font-sans">
+                {transitDominant.texte}
+              </p>
+            </Card>
+          </div>
+        )}
+      </PremiumGate>
+
       <div className="space-y-6">
         <div className="flex items-center gap-3 opacity-30">
           <p className="text-[9px] text-muted tracking-[3px] uppercase font-bold whitespace-nowrap">Murmures des astres</p>
@@ -279,6 +399,7 @@ const Horoscope = ({ onBack, onUpgrade }) => {
         </div>
       </div>
 
+      {/* Cycles Longs personnalisés (Premium) */}
       <PremiumGate 
         featureKey="horoscope_semaine" 
         onUpgrade={onUpgrade} 
@@ -291,21 +412,64 @@ const Horoscope = ({ onBack, onUpgrade }) => {
           </div>
 
           <div className="bg-gradient-to-br from-card to-night border border-white/5 rounded-[28px] p-6 space-y-6">
-            <div>
-              <h4 className="text-[10px] text-gold tracking-[3px] uppercase mb-3 font-black">Perspective Hebdomadaire</h4>
-              <p className="text-muted text-xs leading-relaxed opacity-80">
-                La configuration planétaire de cette semaine suggère une phase de transition importante. Mercure facilite vos échanges, tandis que Mars dynamise vos ambitions. Restez à l'écoute des opportunités fortuites.
-              </p>
-            </div>
+            {/* Perspective Hebdomadaire personnalisée */}
+            {perspectiveHebdo && (
+              <div>
+                <h4 className="text-[10px] text-gold tracking-[3px] uppercase mb-3 font-black">Perspective Hebdomadaire</h4>
+                <div className="flex items-start gap-3 mb-2">
+                  <span className="text-lg text-gold/60">{perspectiveHebdo.symbole}</span>
+                  <div>
+                    <p className="text-gold/50 text-[10px] tracking-widest uppercase">
+                      {perspectiveHebdo.planete} en {perspectiveHebdo.signe} · M{perspectiveHebdo.maison}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-muted text-xs leading-relaxed opacity-80">
+                  {perspectiveHebdo.texte}
+                </p>
+              </div>
+            )}
             
-            <div className="h-px bg-white/5 w-1/2 mx-auto" />
+            {perspectiveHebdo && perspectiveMensuelle && (
+              <div className="h-px bg-white/5 w-1/2 mx-auto" />
+            )}
 
-            <div>
-              <h4 className="text-[10px] text-gold tracking-[3px] uppercase mb-3 font-black">Climat Mensuel</h4>
-              <p className="text-muted text-xs leading-relaxed opacity-80">
-                Un mois charnière pour vos relations personnelles. La position de la Lune indique un besoin de clarté émotionnelle. Ne craignez pas d'exprimer vos besoins profonds.
-              </p>
-            </div>
+            {/* Perspective Mensuelle personnalisée */}
+            {perspectiveMensuelle && (
+              <div>
+                <h4 className="text-[10px] text-gold tracking-[3px] uppercase mb-3 font-black">Climat Mensuel</h4>
+                <div className="flex items-start gap-3 mb-2">
+                  <span className="text-lg text-gold/60">{perspectiveMensuelle.symbole}</span>
+                  <div>
+                    <p className="text-gold/50 text-[10px] tracking-widest uppercase">
+                      {perspectiveMensuelle.planete} en {perspectiveMensuelle.signe} · M{perspectiveMensuelle.maison}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-muted text-xs leading-relaxed opacity-80">
+                  {perspectiveMensuelle.texte}
+                </p>
+              </div>
+            )}
+
+            {/* Fallback si pas de données */}
+            {!perspectiveHebdo && !perspectiveMensuelle && (
+              <>
+                <div>
+                  <h4 className="text-[10px] text-gold tracking-[3px] uppercase mb-3 font-black">Perspective Hebdomadaire</h4>
+                  <p className="text-muted text-xs leading-relaxed opacity-80">
+                    Complétez votre thème natal pour débloquer vos perspectives personnalisées.
+                  </p>
+                </div>
+                <div className="h-px bg-white/5 w-1/2 mx-auto" />
+                <div>
+                  <h4 className="text-[10px] text-gold tracking-[3px] uppercase mb-3 font-black">Climat Mensuel</h4>
+                  <p className="text-muted text-xs leading-relaxed opacity-80">
+                    Votre date de naissance est nécessaire pour calculer vos transits à long terme.
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </PremiumGate>

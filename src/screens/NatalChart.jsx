@@ -2,9 +2,11 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
+import { useSubscription } from '../hooks/useSubscription';
 import { getThemeNatal } from '../services/astroService';
 import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS } from '../data/lecturesMaisons';
 import { ASPECTS_TEXTE } from '../services/astroService';
+import PremiumGate from '../components/ui/PremiumGate';
 
 const INTERPRETATIONS = {
   "Soleil_Bélier": "Ton Soleil en Bélier fait de toi une âme de pionnier. Tu avances sans regarder en arrière, porté par une flamme intérieure que rien ne semble pouvoir éteindre.",
@@ -53,13 +55,13 @@ const PLANETES_NATALES = [
   { nom: "Saturne", symbole: "♄", key: "saturne", couleur: "#C9A460" }
 ];
 
-const NatalChart = ({ onSeeNoeuds }) => {
+const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
   const canvasRef = useRef(null);
   const [planeteSelectionnee, setPlaneteSelectionnee] = useState(null);
   const { user } = useAuthContext();
   const { profile, loading } = useProfile(user?.id);
+  const { isPremiumUser } = useSubscription();
 
-  // Calcule le thème natal réel
   const themeNatal = useMemo(() => {
     if (!profile?.date_naissance) return null;
     return getThemeNatal(
@@ -70,7 +72,6 @@ const NatalChart = ({ onSeeNoeuds }) => {
     );
   }, [profile?.date_naissance, profile?.heure_naissance, profile?.latitude, profile?.longitude]);
 
-  // Planètes natales formatées
   const planetesNatales = useMemo(() => {
     if (!themeNatal) return [];
     return PLANETES_NATALES.map(def => {
@@ -140,7 +141,6 @@ const NatalChart = ({ onSeeNoeuds }) => {
       ctx.fillText(s + '\uFE0E', centre + 108 * Math.cos(angle), centre + 108 * Math.sin(angle));
     });
 
-    // Placement réel des planètes selon leur position natale
     const planets = (planetesNatales && planetesNatales.length > 0) ? planetesNatales : [];
     planets.forEach((p) => {
       const signeIndex = ["Bélier","Taureau","Gémeaux","Cancer","Lion","Vierge","Balance","Scorpion","Sagittaire","Capricorne","Verseau","Poissons"].indexOf(p.signe);
@@ -236,7 +236,7 @@ const NatalChart = ({ onSeeNoeuds }) => {
         </button>
       </div>
 
-      {/* Interpretation Modal */}
+      {/* Interpretation Modal avec PremiumGate */}
       {planeteSelectionnee && (
         <div 
           className="absolute inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300"
@@ -258,9 +258,24 @@ const NatalChart = ({ onSeeNoeuds }) => {
               <p className="text-[9px] text-gold/40 tracking-widest uppercase mb-3">{planeteSelectionnee.maisonTexte}</p>
             )}
             <div className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent mb-6" />
-            <p className="text-cream/90 text-sm leading-relaxed italic font-serif">
-              "{planeteSelectionnee.lectureMaison || planeteSelectionnee.interpretation}"
-            </p>
+            
+            {/* Lecture personnalisée Premium ou interprétation gratuite */}
+            {isPremiumUser && planeteSelectionnee.lectureMaison ? (
+              <p className="text-cream/90 text-sm leading-relaxed italic font-serif">
+                "{planeteSelectionnee.lectureMaison}"
+              </p>
+            ) : (
+              <PremiumGate 
+                featureKey="theme_interactif" 
+                onUpgrade={onUpgrade}
+                preview={false}
+              >
+                <p className="text-cream/90 text-sm leading-relaxed italic font-serif">
+                  "{planeteSelectionnee.lectureMaison || planeteSelectionnee.interpretation}"
+                </p>
+              </PremiumGate>
+            )}
+            
             <button 
               onClick={() => setPlaneteSelectionnee(null)}
               className="mt-8 text-[10px] text-gold/70 uppercase tracking-[2px] border border-gold/20 px-8 py-2.5 rounded-full hover:bg-gold/10 transition-colors"

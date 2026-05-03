@@ -11,25 +11,25 @@ const useFriends = () => {
 
   const [friends, setFriends] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [activityFeed, setActivityFeed] = useState([]);
   const [searchResults, setSearchResults] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const loadFriendsData = useCallback(async () => {
+  // ━━━ CHARGEMENT INITIAL ━━━
+  const loadAll = useCallback(async () => {
     if (!user?.id) return;
-    
     setLoading(true);
     try {
-      const [fRes, pRes] = await Promise.all([
+      const [friendsRes, pendingRes, feedRes] = await Promise.all([
         friendService.getFriends(user.id),
-        friendService.getPendingRequests(user.id)
+        friendService.getPendingRequests(user.id),
+        friendService.getActivityFeed(user.id)
       ]);
-
-      if (fRes.error) throw new Error(fRes.error);
-      if (pRes.error) throw new Error(pRes.error);
-
-      setFriends(fRes.data || []);
-      setPendingRequests(pRes.data || []);
+      setFriends(friendsRes.data || []);
+      setPendingRequests(pendingRes.data || []);
+      setActivityFeed(feedRes.data || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -37,84 +37,103 @@ const useFriends = () => {
     }
   }, [user?.id]);
 
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  // Met à jour last_seen à chaque montage
   useEffect(() => {
-    loadFriendsData();
-  }, [loadFriendsData]);
+    if (user?.id) friendService.updateLastSeen(user.id);
+  }, [user?.id]);
 
-  const searchUser = useCallback(async (email) => {
-    if (!email.trim()) return setSearchResults(null);
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data, error: searchError } = await friendService.searchUserByEmail(email);
-      
-      if (searchError || !data) {
-        setError("Âme introuvable dans les astres...");
-        setSearchResults(null);
-      } else if (data.id === user.id) {
-        setError("Vous êtes déjà votre meilleur allié.");
-        setSearchResults(null);
-      } else {
-        // Vérifier si déjà ami
-        const isFriend = friends.some(f => f.ami.id === data.id);
-        const isPending = pendingRequests.some(r => r.sender.id === data.id);
-        setSearchResults({ ...data, isFriend, isPending });
-      }
-    } catch (err) {
-      setError("Erreur de connexion céleste.");
-    } finally {
-      setLoading(false);
+  // ━━━ COMPATIBILITÉ (avec citation) ━━━
+  const getCompatibilityWith = useCallback((amiProfil) => {
+    if (!profile || !amiProfil) {
+      return {
+        global: 0, amour: 0, communication: 0,
+        valeurs: 0, complicite: 0, durabilite: 0,
+        citation: "Les astres vous unissent en silence."
+      };
     }
+    const scores = calculateCompatibility(profile, amiProfil);
+    const citation = getCitationCompatibilite(profile, amiProfil);
+    return { ...scores, citation };
+  }, [profile]);
+
+  // ━━━ RECHERCHE (par email ou username) ━━━
+  const searchUser = useCallback(async (query) => {
+    if (!query?.trim() || !user?.id) return;
+    setSearchLoading(true);
+    setSearchResults(null);
+    const { data } = await friendService.searchUser(query, user.id);
+    if (data?.length > 0) {
+      // Vérifie si déjà ami ou en attente
+      const enriched = data.map(u => ({
+        ...u,
+        isFriend: friends.some(f => f.ami?.id === u.id),
+        isPending: pendingRequests.some(r => r.sender?.id === u.id)
+      }));
+      setSearchResults(enriched);
+    } else {
+      setSearchResults([]);
+    }
+    setSearchLoading(false);
   }, [user?.id, friends, pendingRequests]);
 
-  const addFriend = useCallback(async (receiverId) => {
-    const res = await friendService.sendFriendRequest(user.id, receiverId);
-    if (!res.error) {
-      setSearchResults(null); // On ferme la recherche après envoi
-      loadFriendsData();
+  // ━━━ AJOUTER AMI ━━━
+  const addFriend = useCallback(async (targetId) => {
+    if (!user?.id) return { error: 'Non connecté' };
+    const result = await friendService.sendFriendRequest(user.id, targetId);
+    if (!result.error) {
+      setSearchResults(null);
+      await loadAll();
     }
-    return res;
-  }, [user?.id, loadFriendsData]);
+    return result;
+  }, [user?.id, loadAll]);
 
+  // ━━━ ACCEPTER DEMANDE ━━━
   const acceptRequest = useCallback(async (friendshipId) => {
-    // Update optimiste : on retire de la liste d'attente immédiatement
+    if (!user?.id) return;
     setPendingRequests(prev => prev.filter(r => r.id !== friendshipId));
-    const res = await friendService.acceptFriendRequest(friendshipId);
-    await loadFriendsData();
-    return res;
-  }, [loadFriendsData]);
+    await friendService.acceptFriendRequest(friendshipId, user.id);
+    await loadAll();
+  }, [user?.id, loadAll]);
 
-  const removeFriend = useCallback(async (friendshipId) => {
+  // ━━━ SUPPRIMER AMI ━━━
+  const removeFriendById = useCallback(async (friendshipId) => {
     setFriends(prev => prev.filter(f => f.friendshipId !== friendshipId));
-    return await friendService.removeFriend(friendshipId);
-  }, []);
+    await friendService.removeFriend(friendshipId);
+    await loadAll();
+  }, [loadAll]);
 
-  const getCompatibilityWith = useCallback((amiProfil) => {
-    // Si mon profil n'est pas chargé, on renvoie un état neutre
-    if (profileLoading || !profile || !amiProfil) {
-      return { global: 0, loading: true };
-    }
+  // ━━━ LOG VUE COMPATIBILITÉ ━━━
+  const logView = useCallback(async (viewedUserId) => {
+    if (!user?.id || user.id === viewedUserId) return;
+    await friendService.logCompatibilityView(user.id, viewedUserId);
+  }, [user?.id]);
 
-    return {
-      ...calculateCompatibility(profile, amiProfil),
-      citation: getCitationCompatibilite(profile, amiProfil)
-    };
-  }, [profile, profileLoading]);
+  // ━━━ GÉNÉRER LIEN DE PARTAGE ━━━
+  const getShareLink = useCallback(() => {
+    if (!profile?.share_token) return null;
+    return `${window.location.origin}/invite/${profile.share_token}`;
+  }, [profile]);
 
+  // ━━━ EXPOSER ━━━
   return {
     friends,
     pendingRequests,
+    activityFeed,
+    searchResults,
+    searchLoading,
     loading: loading || profileLoading,
     error,
+    setSearchResults,
     searchUser,
-    searchResults,
-    setSearchResults, // Pour pouvoir annuler la recherche
     addFriend,
     acceptRequest,
-    removeFriend,
+    removeFriend: removeFriendById,
     getCompatibilityWith,
-    refreshFriends: loadFriendsData
+    logView,
+    getShareLink,
+    refreshFriends: loadAll
   };
 };
 
