@@ -34,7 +34,7 @@ const AppContent = () => {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const { profile, loading: profileLoading } = useProfile(user?.id);
   
-  const [currentScreen, setCurrentScreen] = useState('loading');
+  const [currentScreen, setCurrentScreen] = useState('splash');
   const [activeTab, setActiveTab] = useState('home');
   const [previousScreen, setPreviousScreen] = useState('home');
   const [onboardingData, setOnboardingData] = useState({
@@ -118,10 +118,25 @@ const AppContent = () => {
 
   // Navigation intelligente
   useEffect(() => {
+    console.log('NAV DEBUG:', { authLoading, profileLoading, isAuthenticated, hasProfile: !!profile, currentScreen });
+    
     if (authLoading || profileLoading) return;
 
+    // FORÇAGE : si on est sur 'loading', sortir immédiatement
+    if (currentScreen === 'loading') {
+      if (!isAuthenticated) {
+        setCurrentScreen('splash');
+      } else if (profile && (profile.onboarding_completed || profile.signe_solaire)) {
+        setCurrentScreen('home');
+        setActiveTab('home');
+      } else {
+        setCurrentScreen('onb1');
+      }
+      return;
+    }
+
     if (isAuthenticated && profile && (profile.onboarding_completed || profile.signe_solaire)) {
-      if (PUBLIC_SCREENS.includes(currentScreen) || currentScreen === 'loading') {
+      if (PUBLIC_SCREENS.includes(currentScreen)) {
         setCurrentScreen('home');
         setActiveTab('home');
       }
@@ -129,7 +144,7 @@ const AppContent = () => {
     }
 
     if (isAuthenticated && (!profile || (!profile.onboarding_completed && !profile.signe_solaire))) {
-      if (!ONBOARDING_SCREENS.includes(currentScreen) && currentScreen !== 'loading') {
+      if (!ONBOARDING_SCREENS.includes(currentScreen)) {
         setCurrentScreen('onb1');
       }
       return;
@@ -157,7 +172,7 @@ const AppContent = () => {
     setCurrentScreen('abonnement');
   };
 
-  if (authLoading || profileLoading || currentScreen === 'loading') {
+  if (authLoading || profileLoading) {
     return (
       <div className="h-screen w-screen bg-night flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">

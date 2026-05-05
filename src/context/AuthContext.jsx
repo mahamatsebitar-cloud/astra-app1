@@ -8,15 +8,32 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const safetyTimer = setTimeout(() => {
+      console.warn('Auth timeout — affichage forcé');
+      setLoading(false);
+    }, 8000);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+      clearTimeout(safetyTimer);
+    }).catch(() => {
+      setUser(null);
+      setLoading(false);
+      clearTimeout(safetyTimer);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
         setLoading(false);
+        clearTimeout(safetyTimer);
       }
     );
 
     return () => {
       subscription.unsubscribe();
+      clearTimeout(safetyTimer);
     };
   }, []);
 

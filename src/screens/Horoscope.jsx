@@ -191,6 +191,15 @@ const Horoscope = ({ onBack, onUpgrade }) => {
     const maisonVenus = getMaisonTransit(venus, maisons);
     const maisonMars = getMaisonTransit(mars, maisons);
     const maisonLune = getMaisonTransit(lune, maisons);
+
+    // FIX : Fonction pour générer un score unique par domaine chaque jour
+    const generateUniqueScore = (baseScore, seedOffset) => {
+      // Utilise le jour de l'année et le signe pour créer une variation déterministe
+      const seed = jourAnnee + seedOffset + (signeSolaire?.length || 0);
+      const variation = Math.floor(Math.sin(seed) * 15); // Variation de +/- 15
+      const finalScore = Math.max(25, Math.min(95, (baseScore || 60) + variation));
+      return Math.round(finalScore / 20); // Retourne 1 à 5 pour ScoreBar
+    };
     
     const getTexteDomaine = (planete, maison, fallbackTexte) => {
       if (planete && maison) {
@@ -210,7 +219,7 @@ const Horoscope = ({ onBack, onUpgrade }) => {
       {
         label: "Amour",
         texte: amour.texte,
-        score: Math.round((horoscope.amour?.score || 50) / 20),
+        score: generateUniqueScore(horoscope.amour?.score, 10),
         couleur: "#C17B8A",
         icone: "♥",
         planete: amour.planete || "Vénus",
@@ -220,7 +229,7 @@ const Horoscope = ({ onBack, onUpgrade }) => {
       {
         label: "Travail",
         texte: travail.texte,
-        score: Math.round((horoscope.travail?.score || 50) / 20),
+        score: generateUniqueScore(horoscope.travail?.score, 42),
         couleur: "#7B9ECB",
         icone: "◆",
         planete: travail.planete || "Mars",
@@ -230,7 +239,7 @@ const Horoscope = ({ onBack, onUpgrade }) => {
       {
         label: "Bien-être",
         texte: bienEtre.texte,
-        score: Math.round((horoscope.bienEtre?.score || 50) / 20),
+        score: generateUniqueScore(horoscope.bienEtre?.score, 77),
         couleur: "#7BB8A0",
         icone: "●",
         planete: bienEtre.planete || "Lune",
@@ -238,7 +247,7 @@ const Horoscope = ({ onBack, onUpgrade }) => {
         maisonTexte: bienEtre.maison ? SIGNIFICATIONS_MAISONS[bienEtre.maison] : null
       }
     ];
-  }, [horoscope, planetesDuJour, themeNatal, jourAnnee]);
+  }, [horoscope, planetesDuJour, themeNatal, jourAnnee, signeSolaire]);
 
   if (loading) {
     return (
