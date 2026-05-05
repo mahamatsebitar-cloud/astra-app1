@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import PhoneFrame from "./components/layout/PhoneFrame.jsx";
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { useProfile } from './hooks/useProfile';
@@ -221,8 +220,9 @@ const AppContent = () => {
   };
 
   return (
-    <PhoneFrame showNav={showNav} activeTab={activeTab} onTabChange={handleTabChange}>
-      <div className="relative h-full overflow-hidden bg-night">
+    <div className="h-screen w-screen bg-night flex flex-col overflow-hidden">
+      {/* Zone de contenu */}
+      <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
           <motion.div key={currentScreen} ref={scrollRef}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -233,8 +233,76 @@ const AppContent = () => {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* BottomNav avec les vraies icônes SVG */}
+      {showNav && (
+        <nav className="h-16 bg-[#090C1E] border-t border-border flex items-center justify-around px-2 shrink-0">
+          {[
+            { id: 'home', label: 'ACCUEIL', icon: 'home' },
+            { id: 'natal', label: 'THÈME', icon: 'wheel' },
+            { id: 'compat', label: 'AFFINITÉS', icon: 'overlap' },
+            { id: 'profil', label: 'PROFIL', icon: 'profile' }
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            const strokeColor = isActive ? 'var(--color-gold)' : 'var(--color-muted)';
+            
+            const renderIcon = () => {
+              switch(tab.icon) {
+                case 'home':
+                  return (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={strokeColor} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 9.5L12 3L21 9.5V20C21 20.5523 20.5523 21 20 21H16C15.4477 21 15 20.5523 15 20V15C15 14.4477 14.5523 14 14 14H10C9.44772 14 9 14.4477 9 15V20C9 20.5523 8.55228 21 8 21H4C3.44772 21 3 20.5523 3 20V9.5Z" />
+                    </svg>
+                  );
+                case 'wheel':
+                  return (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={strokeColor} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="8" />
+                      <circle cx="12" cy="12" r="3" />
+                      <line x1="12" y1="4" x2="12" y2="7" />
+                      <line x1="12" y1="17" x2="12" y2="20" />
+                      <line x1="4" y1="12" x2="7" y2="12" />
+                      <line x1="17" y1="12" x2="20" y2="12" />
+                    </svg>
+                  );
+                case 'overlap':
+                  return (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={strokeColor} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="9" cy="12" r="6" />
+                      <circle cx="15" cy="12" r="6" />
+                      <path d="M12 8C13.6569 9.5 13.6569 14.5 12 16" />
+                    </svg>
+                  );
+                case 'profile':
+                  return (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={strokeColor} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="9" r="5" />
+                      <path d="M5 20C5 17 8 15 12 15C16 15 19 17 19 20" />
+                    </svg>
+                  );
+                default:
+                  return null;
+              }
+            };
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className="flex flex-col items-center gap-1 min-w-[60px] py-2"
+              >
+                {renderIcon()}
+                <span className={`text-[9px] tracking-wide font-serif ${isActive ? 'text-gold' : 'text-muted'}`}>
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
+
       <ConsentBanner />
-    </PhoneFrame>
+    </div>
   );
 };
 

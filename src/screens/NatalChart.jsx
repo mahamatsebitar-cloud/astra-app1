@@ -1,7 +1,6 @@
 // src/screens/NatalChart.jsx
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { useAuthContext } from '../context/AuthContext';
-import { useProfile } from '../hooks/useProfile';
+import { useProfileContext } from '../context/ProfileContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { getThemeNatal } from '../services/astroService';
 import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS } from '../data/lecturesMaisons';
@@ -58,8 +57,7 @@ const PLANETES_NATALES = [
 const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
   const canvasRef = useRef(null);
   const [planeteSelectionnee, setPlaneteSelectionnee] = useState(null);
-  const { user } = useAuthContext();
-  const { profile, loading } = useProfile(user?.id);
+  const { profile, loading } = useProfileContext();
   const { isPremiumUser } = useSubscription();
 
   const themeNatal = useMemo(() => {
