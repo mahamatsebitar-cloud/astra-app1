@@ -18,14 +18,11 @@ jobs:
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '17'
           distribution: 'temurin'
 
       - name: Install Dependencies
         run: npm install
-
-      - name: Install Capacitor
-        run: npm install @capacitor/cli @capacitor/android @capacitor/core
 
       - name: Build Web Project
         run: npm run build
@@ -50,44 +47,12 @@ jobs:
         run: |
           if [ ! -d "android" ]; then
             npx cap add android
-          else
-            echo "Android platform already exists, skipping..."
           fi
 
       - name: Inject Firebase Config
         run: |
           mkdir -p android/app
-          cat > android/app/google-services.json << 'FIREBASE_EOF'
-          {
-            "project_info": {
-              "project_number": "1033858955559",
-              "project_id": "astra-app-baeae",
-              "storage_bucket": "astra-app-baeae.firebasestorage.app"
-            },
-            "client": [
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:1033858955559:android:e90a39a216b422bf6c5102",
-                  "android_client_info": {
-                    "package_name": "com.nouren.astra"
-                  }
-                },
-                "oauth_client": [],
-                "api_key": [
-                  {
-                    "current_key": "AIzaSyAH5c_MnL3yqHE18YVua9-U5zIL52s84zI"
-                  }
-                ],
-                "services": {
-                  "appinvite_service": {
-                    "other_platform_oauth_client": []
-                  }
-                }
-              }
-            ],
-            "configuration_version": "1"
-          }
-          FIREBASE_EOF
+          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
 
       - name: Sync Capacitor
         run: npx cap sync android
