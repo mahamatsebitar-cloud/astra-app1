@@ -232,7 +232,7 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
               <h4 className="text-cream font-serif text-base tracking-wide">Vos Nœuds Lunaires</h4>
               <p className="text-[11px] text-muted/70 italic font-serif mt-1">Le fil invisible de votre destin</p>
             </div>
-            <span className="text-gold/80 text-3xl transition-transform group-hover:translate-x-2 drop-shadow-[0_0_8px_rgba(201,164,96,0.3)]">☊\uFE0E</span>
+            <span className="text-gold/80 text-3xl transition-transform group-hover:translate-x-2 drop-shadow-[0_0_8px_rgba(201,164,96,0.3)]">{'☊\uFE0E'}</span>
           </div>
           <div className="absolute inset-0 bg-gold/5 opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>

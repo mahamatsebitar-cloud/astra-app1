@@ -167,7 +167,6 @@ const Home = ({ onHoroscope, onProfil }) => {
       || generateMessageDuJour(signeSolaire);
   }, [messagePersonnalise, signeSolaire, todayStr]);
 
-  // Planète active du jour pour le tag dynamique
   const planeteActive = useMemo(() => {
     if (messagePersonnalise?.planete) {
       return messagePersonnalise.planete;
@@ -202,15 +201,20 @@ const Home = ({ onHoroscope, onProfil }) => {
           {saint && <p className="text-[9px] text-muted/50 font-sans mt-0.5">Fête : {saint}</p>}
         </div>
         <div onClick={onProfil} className="w-10 h-10 bg-[#141731] border-[1.5px] border-gold rounded-full flex items-center justify-center cursor-pointer hover:scale-105 transition-all overflow-hidden">
-          {avatarUrl ? <img src={avatarUrl} alt="Profil" className="w-full h-full object-cover" /> :
-          <span className="text-gold font-serif text-lg">{ZODIAC_SYMBOLS[signeSolaire]}</span>}
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Profil" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-gold font-serif text-sm lowercase">
+              {displayNom.charAt(0)}
+            </span>
+          )}
         </div>
       </div>
 
       {/* Card Signe Principal */}
       <Card className="flex items-center gap-4 border-gold/20 bg-gradient-to-r from-card to-[#1A1D3D]">
         <div className="w-14 h-14 rounded-full border border-gold/30 flex items-center justify-center bg-[#141731] shrink-0">
-          <span className="text-gold text-2xl" style={{ fontVariantEmoji: 'text' }}>{ZODIAC_SYMBOLS[signeSolaire]}</span>
+          <span className="text-gold text-2xl font-serif">{ZODIAC_SYMBOLS[signeSolaire] + '\uFE0E'}</span>
         </div>
         <div className="overflow-hidden text-left flex-1">
           <p className="text-[11px] text-gold tracking-wide uppercase font-sans font-bold">Soleil en {signeSolaire}</p>
@@ -295,7 +299,7 @@ const Home = ({ onHoroscope, onProfil }) => {
         <div>
           <p className="text-[9px] text-muted/40 tracking-[2px] uppercase text-center font-sans mb-3">Pensée du jour</p>
           <p className="text-xs text-muted/70 italic font-serif text-center leading-relaxed px-6">
-            "{penseeDuJour}"
+            « {penseeDuJour} »
           </p>
         </div>
 
@@ -333,7 +337,7 @@ const Home = ({ onHoroscope, onProfil }) => {
             </p>
             <div className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent mb-6" />
             <p className="text-cream/90 text-sm leading-relaxed italic">
-              "{selectedPlanet.aspectPersonnalise || INFOS_MOUVEMENTS[selectedPlanet.nom] || "Cette configuration influence votre croissance."}"
+              « {selectedPlanet.aspectPersonnalise || INFOS_MOUVEMENTS[selectedPlanet.nom] || "Cette configuration influence votre croissance."} »
             </p>
             <button onClick={() => setSelectedPlanet(null)} className="mt-8 text-[10px] text-gold/50 uppercase tracking-[2px] border border-gold/20 px-8 py-2 rounded-full">Fermer</button>
           </div>
