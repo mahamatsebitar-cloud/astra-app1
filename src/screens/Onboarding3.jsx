@@ -1,13 +1,16 @@
+// src/screens/Onboarding3.jsx
 import React, { useState } from 'react';
 import Button from "../components/ui/Button";
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
+import { saveProfile } from '../services/profileService';
 import { supabase } from '../lib/supabase';
 import { getSigneSolaire, getSigneLunaire, getAscendant } from '../services/astroService';
 
 const Onboarding3 = ({ onFinish, dateNaissance, heure }) => {
   const { user } = useAuthContext();
-  const { saveProfile, isLoading } = useProfile(user?.id); 
+  const { profile } = useProfile(user?.id); 
+  const [isLoading, setIsLoading] = useState(false);
   
   const [query, setQuery] = useState('');
   const [selectedCity, setSelectedCity] = useState(null);
@@ -43,6 +46,8 @@ const Onboarding3 = ({ onFinish, dateNaissance, heure }) => {
       return;
     }
 
+    setIsLoading(true);
+
     const lat = parseFloat(selectedCity.coords.split(',')[0]) || 48.8566;
     const signeSolaire = getSigneSolaire(dateNaissance);
     const signeLunaire = getSigneLunaire(dateNaissance);
@@ -61,16 +66,20 @@ const Onboarding3 = ({ onFinish, dateNaissance, heure }) => {
     };
 
     try {
-      const success = await saveProfile(profileData);
+      const result = await saveProfile(finalUserId, profileData);
+      console.log('saveProfile result:', result);
       
-      if (success) {
-        onFinish();
+      if (result.error) {
+        console.error('saveProfile error:', result.error);
+        alert("Erreur lors de la sauvegarde : " + result.error.message);
       } else {
-        alert("Erreur lors de la sauvegarde. Vérifiez votre connexion.");
+        onFinish();
       }
     } catch (err) {
       console.error("Erreur Onboarding3:", err);
       alert("Erreur système : " + err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 

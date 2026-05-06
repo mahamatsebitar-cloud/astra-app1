@@ -55,6 +55,147 @@ const PLANETES_NATALES = [
   { nom: "Saturne", key: "saturne", couleur: "#C9A460" }
 ];
 
+const ZODIAC_PATHS = [
+  // Bélier
+  (ctx) => {
+    ctx.beginPath();
+    ctx.moveTo(-4, 4);
+    ctx.bezierCurveTo(-4, 4, -1, -6, 2, -10);
+    ctx.bezierCurveTo(5, -6, 8, 4, 8, 4);
+    ctx.stroke();
+    ctx.fillStyle = '#5C5A7A';
+    ctx.beginPath(); ctx.arc(-6, 8, 1.3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(6, 8, 1.3, 0, Math.PI*2); ctx.fill();
+  },
+  // Taureau
+  (ctx) => {
+    ctx.beginPath(); ctx.arc(0, -4, 6, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-6, 2); ctx.quadraticCurveTo(-8, 8, -4, 9); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(6, 2); ctx.quadraticCurveTo(8, 8, 4, 9); ctx.stroke();
+  },
+  // Gémeaux
+  (ctx) => {
+    ctx.beginPath(); ctx.moveTo(-9, -7); ctx.lineTo(1, -7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(1, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-9, 7); ctx.lineTo(1, 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(3, -7); ctx.lineTo(13, -7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(3, 0); ctx.lineTo(13, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(3, 7); ctx.lineTo(13, 7); ctx.stroke();
+  },
+  // Cancer
+  (ctx) => {
+    ctx.beginPath();
+    ctx.moveTo(-8, 2);
+    ctx.bezierCurveTo(-8, -6, -2, -8, 0, -6);
+    ctx.bezierCurveTo(2, -8, 8, -6, 8, 2);
+    ctx.stroke();
+    ctx.fillStyle = '#5C5A7A';
+    ctx.beginPath(); ctx.arc(-6, 10, 1.3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(6, 10, 1.3, 0, Math.PI*2); ctx.fill();
+  },
+  // Lion
+  (ctx) => {
+    ctx.beginPath(); ctx.arc(0, -5, 4, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-6, 2); ctx.quadraticCurveTo(-8, 0, -6, -2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(6, 2); ctx.quadraticCurveTo(8, 0, 6, -2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(0, 8, -4, 10); ctx.quadraticCurveTo(-6, 10, -4, 8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(0, 8, 4, 10); ctx.quadraticCurveTo(6, 10, 4, 8); ctx.stroke();
+  },
+  // Vierge
+  (ctx) => {
+    ctx.beginPath(); ctx.moveTo(-4, -8); ctx.lineTo(4, -8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, -6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(-8, 0, -8, 3); ctx.quadraticCurveTo(-8, 6, -6, 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(6, 0); ctx.quadraticCurveTo(8, 0, 8, 3); ctx.quadraticCurveTo(8, 6, 6, 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(0, 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(-3, 14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(3, 14); ctx.stroke();
+  },
+  // Balance
+  (ctx) => {
+    ctx.beginPath(); ctx.moveTo(-6, -8); ctx.lineTo(6, -8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(0, -4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-8, 8); ctx.lineTo(8, 8); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-6, 12, 2, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(6, 12, 2, 0, Math.PI*2); ctx.stroke();
+  },
+  // Scorpion
+  (ctx) => {
+    ctx.beginPath(); ctx.moveTo(-4, -10); ctx.lineTo(4, -10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(0, -8); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(8, -10);
+    ctx.lineTo(8, -4);
+    ctx.quadraticCurveTo(8, 2, 4, 4);
+    ctx.quadraticCurveTo(0, 6, -4, 4);
+    ctx.quadraticCurveTo(-8, 2, -8, -4);
+    ctx.lineTo(-8, -10);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, 6); ctx.lineTo(2, 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, 6); ctx.lineTo(6, 10); ctx.stroke();
+  },
+  // Sagittaire
+  (ctx) => {
+    ctx.beginPath(); ctx.moveTo(-10, 12); ctx.lineTo(4, -6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(1, -10); ctx.lineTo(8, -10); ctx.lineTo(8, -3); ctx.stroke();
+  },
+  // Capricorne
+  (ctx) => {
+    ctx.beginPath();
+    ctx.moveTo(-6, -6);
+    ctx.quadraticCurveTo(-6, -8, -4, -10);
+    ctx.quadraticCurveTo(-2, -12, 0, -6);
+    ctx.quadraticCurveTo(2, -12, 4, -10);
+    ctx.quadraticCurveTo(6, -8, 6, -6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-6, 0);
+    ctx.lineTo(-6, 10);
+    ctx.quadraticCurveTo(-6, 12, -2, 12);
+    ctx.quadraticCurveTo(2, 12, 2, 10);
+    ctx.lineTo(2, 4);
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(2, 14, 2, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, 12); ctx.lineTo(8, 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(6, 10); ctx.lineTo(6, 12); ctx.stroke();
+  },
+  // Verseau
+  (ctx) => {
+    ctx.beginPath();
+    ctx.moveTo(-8, -6);
+    ctx.quadraticCurveTo(-6, -8, -4, -6);
+    ctx.quadraticCurveTo(-2, -4, 0, -6);
+    ctx.quadraticCurveTo(2, -8, 4, -6);
+    ctx.quadraticCurveTo(6, -4, 8, -6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-8, 2);
+    ctx.quadraticCurveTo(-6, 0, -4, 2);
+    ctx.quadraticCurveTo(-2, 4, 0, 2);
+    ctx.quadraticCurveTo(2, 0, 4, 2);
+    ctx.quadraticCurveTo(6, 4, 8, 2);
+    ctx.stroke();
+  },
+  // Poissons
+  (ctx) => {
+    ctx.beginPath();
+    ctx.moveTo(-8, -6);
+    ctx.quadraticCurveTo(-12, -6, -12, 0);
+    ctx.quadraticCurveTo(-12, 6, -8, 6);
+    ctx.quadraticCurveTo(-4, 6, -4, 0);
+    ctx.quadraticCurveTo(-4, -6, -8, -6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(8, -6);
+    ctx.quadraticCurveTo(4, -6, 4, 0);
+    ctx.quadraticCurveTo(4, 6, 8, 6);
+    ctx.quadraticCurveTo(12, 6, 12, 0);
+    ctx.quadraticCurveTo(12, -6, 8, -6);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-2, 0); ctx.lineTo(2, 0); ctx.stroke();
+  }
+];
+
 const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
   const canvasRef = useRef(null);
   const [planeteSelectionnee, setPlaneteSelectionnee] = useState(null);
@@ -119,6 +260,7 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
     const centre = size / 2;
     ctx.clearRect(0, 0, size, size);
 
+    // Cercles concentriques
     [118, 98, 58, 20].forEach((r) => {
       ctx.beginPath();
       ctx.arc(centre, centre, r, 0, Math.PI * 2);
@@ -129,17 +271,27 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
 
     const degToRad = (deg) => ((deg - 90) * Math.PI) / 180;
 
-    // Symboles zodiacaux en texte simple (canvas gère correctement le \uFE0E)
-    const symboles = ['♈\uFE0E', '♉\uFE0E', '♊\uFE0E', '♋\uFE0E', '♌\uFE0E', '♍\uFE0E', '♎\uFE0E', '♏\uFE0E', '♐\uFE0E', '♑\uFE0E', '♒\uFE0E', '♓\uFE0E'];
-    symboles.forEach((s, i) => {
+    // Dessiner les 12 symboles zodiacaux en SVG path
+    for (let i = 0; i < 12; i++) {
       const angle = degToRad(i * 30 + 15);
+      const x = centre + 108 * Math.cos(angle);
+      const y = centre + 108 * Math.sin(angle);
+      
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(0.55, 0.55);
+      ctx.strokeStyle = '#5C5A7A';
       ctx.fillStyle = '#5C5A7A';
-      ctx.font = '12px serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(s, centre + 108 * Math.cos(angle), centre + 108 * Math.sin(angle));
-    });
+      ctx.lineWidth = 1.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      ZODIAC_PATHS[i](ctx);
+      
+      ctx.restore();
+    }
 
+    // Dessiner les planètes
     const planets = (planetesNatales && planetesNatales.length > 0) ? planetesNatales : [];
     planets.forEach((p) => {
       const signeIndex = ["Bélier","Taureau","Gémeaux","Cancer","Lion","Vierge","Balance","Scorpion","Sagittaire","Capricorne","Verseau","Poissons"].indexOf(p.signe);
@@ -166,9 +318,7 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
       ctx.font = '11px serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      // Utiliser une abréviation pour les planètes dans le canvas
-      const abrev = p.nom.charAt(0);
-      ctx.fillText(abrev, x, y);
+      ctx.fillText(p.nom.charAt(0), x, y);
     });
 
     ctx.fillStyle = '#C9A460';
