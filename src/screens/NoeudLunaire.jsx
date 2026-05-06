@@ -1,16 +1,13 @@
+// src/screens/NoeudLunaire.jsx
 import React, { useMemo } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { getNoeudsLunaires, getThemeNatal } from '../services/astroService';
 import { NOEUDS_LUNAIRES, getPhaseLunaire, getNoeudVariation } from '../data/identiteFrancaise';
 import { SIGNIFICATIONS_MAISONS } from '../data/lecturesMaisons';
+import ZodiacSymbol from '../components/ui/ZodiacSymbol';
+import PlanetCircle from '../components/ui/PlanetCircle';
 import PremiumGate from '../components/ui/PremiumGate';
-
-const SYMBOLES_SIGNES = {
-  Bélier: "♈", Taureau: "♉", Gémeaux: "♊", Cancer: "♋",
-  Lion: "♌", Vierge: "♍", Balance: "♎", Scorpion: "♏",
-  Sagittaire: "♐", Capricorne: "♑", Verseau: "♒", Poissons: "♓",
-};
 
 const NoeudLunaire = ({ onBack, onUpgrade }) => {
   const { user } = useAuthContext();
@@ -18,13 +15,11 @@ const NoeudLunaire = ({ onBack, onUpgrade }) => {
 
   const dateNaissance = profile?.date_naissance || profile?.dateNaissance;
 
-  // Thème natal pour les maisons
   const themeNatal = useMemo(() => {
     if (!dateNaissance) return null;
     return getThemeNatal(dateNaissance, profile?.heure_naissance || '12:00', profile?.latitude || 48.8566, profile?.longitude || 2.3522);
   }, [dateNaissance, profile?.heure_naissance, profile?.latitude, profile?.longitude]);
 
-  // Nœuds lunaires réels calculés par formule ELP-2000
   const noeudsReels = useMemo(() => {
     if (!dateNaissance) return null;
     return getNoeudsLunaires(dateNaissance);
@@ -76,15 +71,12 @@ const NoeudLunaire = ({ onBack, onUpgrade }) => {
     );
   }
 
-  const symboleNord = SYMBOLES_SIGNES[noeudsData.nordSigne] || "✦";
-  const symboleSud = SYMBOLES_SIGNES[noeudsData.sudSigne] || "✦";
-
   const contenuPremium = (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
       {/* Nœud Nord - La Mission */}
       <div className="bg-card/60 backdrop-blur-sm border border-gold/20 rounded-[32px] p-6 space-y-4 relative overflow-hidden shadow-2xl">
         <div className="absolute -top-4 -right-4 p-2 opacity-[0.03] select-none">
-           <span className="text-9xl">{symboleNord}</span>
+          <ZodiacSymbol signe={noeudsData.nordSigne} size={120} color="#C9A460" />
         </div>
         
         <header className="flex justify-between items-start">
@@ -95,9 +87,9 @@ const NoeudLunaire = ({ onBack, onUpgrade }) => {
         </header>
 
         <div className="flex items-center gap-5 relative z-10">
-          <span className="text-6xl text-gold drop-shadow-[0_0_15px_rgba(201,164,96,0.3)]" style={{ fontVariantEmoji: 'text' }}>
-            {symboleNord}
-          </span>
+          <div className="drop-shadow-[0_0_15px_rgba(201,164,96,0.3)]">
+            <ZodiacSymbol signe={noeudsData.nordSigne} size={60} color="#C9A460" />
+          </div>
           <div>
             <h2 className="font-serif text-2xl text-cream tracking-wide">{noeudsData.nordSigne}</h2>
             <p className="font-serif text-[11px] text-gold/60 italic">
@@ -128,9 +120,9 @@ const NoeudLunaire = ({ onBack, onUpgrade }) => {
         </header>
 
         <div className="flex items-center gap-5">
-          <span className="text-6xl text-white/10" style={{ fontVariantEmoji: 'text' }}>
-            {symboleSud}
-          </span>
+          <div className="opacity-10">
+            <ZodiacSymbol signe={noeudsData.sudSigne} size={60} color="#F0ECE0" />
+          </div>
           <div>
             <h2 className="font-serif text-2xl text-muted/80 tracking-wide">{noeudsData.sudSigne}</h2>
             <p className="font-serif text-[11px] text-muted/40 italic">

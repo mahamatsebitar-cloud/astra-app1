@@ -1,9 +1,11 @@
+// src/screens/Profil.jsx
 import React, { useState, useMemo, useCallback } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../hooks/useAuth';
 import { useSubscription } from '../hooks/useSubscription';
 import AstraSymbol from '../components/ui/AstraSymbol';
+import ZodiacSymbol from '../components/ui/ZodiacSymbol';
 import EditProfil from './EditProfil';
 import CGU from './legal/CGU';
 import PolitiqueConfidentialite from './legal/PolitiqueConfidentialite';
@@ -11,12 +13,6 @@ import MentionsLegales from './legal/MentionsLegales';
 import { deleteAccount } from '../services/authService';
 
 // --- Constantes & Helpers ---
-const ZODIAC_SYMBOLS = {
-  "Bélier": "♈", "Taureau": "♉", "Gémeaux": "♊", "Cancer": "♋",
-  "Lion": "♌", "Vierge": "♍", "Balance": "♎", "Scorpion": "♏",
-  "Sagittaire": "♐", "Capricorne": "♑", "Verseau": "♒", "Poissons": "♓"
-};
-
 const TITRES_PROFIL = {
   "Bélier": { masc: "Pionnier de l'aube", fem: "Pionnière de l'aube" },
   "Taureau": { masc: "Gardien du vivant", fem: "Gardienne du vivant" },
@@ -83,8 +79,6 @@ const Profil = ({ onLogout, onNavigate }) => {
 
   const handleEditBack = () => {
     setIsEditing(false);
-    // Ne pas rafraîchir le profil - le state local est déjà à jour via handleUpdateProfile
-    // refreshProfile?.();
   };
 
   const handleDeleteAccount = async () => {
@@ -143,9 +137,9 @@ const Profil = ({ onLogout, onNavigate }) => {
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt={displayNom} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-gold font-serif text-5xl select-none opacity-80" style={{ fontVariantEmoji: 'text' }}>
-                {ZODIAC_SYMBOLS[signeSolaire] || '✦'}
-              </span>
+              <div className="flex items-center justify-center">
+                <ZodiacSymbol signe={signeSolaire} size={48} color="#C9A460" />
+              </div>
             )}
           </div>
           <div className="absolute -bottom-1 -right-1 bg-night border border-gold/40 w-9 h-9 rounded-full flex items-center justify-center text-xs text-gold shadow-lg">

@@ -2,6 +2,8 @@
 import React, { useMemo } from 'react';
 import ScoreBar from '../components/ui/ScoreBar';
 import Card from '../components/ui/Card';
+import ZodiacSymbol from '../components/ui/ZodiacSymbol';
+import PlanetCircle from '../components/ui/PlanetCircle';
 import PremiumGate from '../components/ui/PremiumGate';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
@@ -16,12 +18,6 @@ const SIGNES = [
   "Sagittaire", "Capricorne", "Verseau", "Poissons"
 ];
 
-const ZODIAC_SYMBOLS = {
-  "Bélier": "♈", "Taureau": "♉", "Gémeaux": "♊", "Cancer": "♋",
-  "Lion": "♌", "Vierge": "♍", "Balance": "♎", "Scorpion": "♏",
-  "Sagittaire": "♐", "Capricorne": "♑", "Verseau": "♒", "Poissons": "♓"
-};
-
 const ZODIAC_DATES = {
   "Bélier": "21 mars — 19 avril",
   "Taureau": "20 avril — 20 mai",
@@ -35,11 +31,6 @@ const ZODIAC_DATES = {
   "Capricorne": "22 décembre — 19 janvier",
   "Verseau": "20 janvier — 18 février",
   "Poissons": "19 février — 19 mars"
-};
-
-const PLANETE_SYMBOLS = {
-  "Lune": "☽", "Mercure": "☿", "Vénus": "♀", "Mars": "♂",
-  "Jupiter": "♃", "Saturne": "♄"
 };
 
 function getMaison(degrees, maisons) {
@@ -90,7 +81,6 @@ const Horoscope = ({ onBack, onUpgrade }) => {
 
   const planetesDuJour = useMemo(() => getPlanetesDuJour(), [todayStr]);
 
-  // Transit dominant du jour
   const transitDominant = useMemo(() => {
     if (!themeNatal?.maisons?.length || !planetesDuJour?.length) return null;
     
@@ -104,15 +94,11 @@ const Horoscope = ({ onBack, onUpgrade }) => {
         const nomSansAccent = planete.nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const cleBase = `${nomSansAccent}_maison_${maison}`;
         const variation = getVariationMouvement(cleBase, jourAnnee);
-        const symbole = PLANETE_SYMBOLS[planete.nom] || "✦";
-        const signification = SIGNIFICATIONS_MAISONS[maison] || "";
         
         return {
           planete: planete.nom,
-          symbole,
           signe: planete.signe,
           maison,
-          signification,
           texte: variation || LECTURES_MAISONS[cleBase] || `${planete.nom} en ${planete.signe} influence ta journée.`
         };
       }
@@ -120,7 +106,6 @@ const Horoscope = ({ onBack, onUpgrade }) => {
     return null;
   }, [planetesDuJour, themeNatal, jourAnnee]);
 
-  // Perspective hebdomadaire personnalisée
   const perspectiveHebdo = useMemo(() => {
     if (!themeNatal?.maisons?.length || !planetesDuJour?.length) return null;
     
@@ -135,18 +120,15 @@ const Horoscope = ({ onBack, onUpgrade }) => {
     const nomSansAccent = planete.nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const cleBase = `${nomSansAccent}_maison_${maison}`;
     const variation = getVariationMouvement(cleBase, semaine);
-    const symbole = PLANETE_SYMBOLS[planete.nom] || "✦";
     
     return {
       planete: planete.nom,
-      symbole,
       signe: planete.signe,
       maison,
       texte: variation || LECTURES_MAISONS[cleBase] || `${planete.nom} en ${planete.signe} influence ta semaine.`
     };
   }, [planetesDuJour, themeNatal, semaine]);
 
-  // Perspective mensuelle personnalisée
   const perspectiveMensuelle = useMemo(() => {
     if (!themeNatal?.maisons?.length || !planetesDuJour?.length) return null;
     
@@ -160,11 +142,9 @@ const Horoscope = ({ onBack, onUpgrade }) => {
     const nomSansAccent = planete.nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const cleBase = `${nomSansAccent}_maison_${maison}`;
     const variation = getVariationMouvement(cleBase, mois);
-    const symbole = PLANETE_SYMBOLS[planete.nom] || "✦";
     
     return {
       planete: planete.nom,
-      symbole,
       signe: planete.signe,
       maison,
       texte: variation || LECTURES_MAISONS[cleBase] || `${planete.nom} en ${planete.signe} colore ton mois.`
@@ -192,13 +172,11 @@ const Horoscope = ({ onBack, onUpgrade }) => {
     const maisonMars = getMaisonTransit(mars, maisons);
     const maisonLune = getMaisonTransit(lune, maisons);
 
-    // FIX : Fonction pour générer un score unique par domaine chaque jour
     const generateUniqueScore = (baseScore, seedOffset) => {
-      // Utilise le jour de l'année et le signe pour créer une variation déterministe
       const seed = jourAnnee + seedOffset + (signeSolaire?.length || 0);
-      const variation = Math.floor(Math.sin(seed) * 15); // Variation de +/- 15
+      const variation = Math.floor(Math.sin(seed) * 15);
       const finalScore = Math.max(25, Math.min(95, (baseScore || 60) + variation));
-      return Math.round(finalScore / 20); // Retourne 1 à 5 pour ScoreBar
+      return Math.round(finalScore / 20);
     };
     
     const getTexteDomaine = (planete, maison, fallbackTexte) => {
@@ -292,12 +270,9 @@ const Horoscope = ({ onBack, onUpgrade }) => {
 
       <section className="flex flex-col items-center py-8 border-y border-white/5 my-6 relative overflow-hidden">
         <div className="absolute inset-0 bg-gold/5 blur-[80px] rounded-full" />
-        <span 
-          className="text-6xl mb-3 text-gold relative z-10 select-none"
-          style={{ fontVariantEmoji: 'text' }}
-        >
-          {ZODIAC_SYMBOLS[signeSolaire] || "✦"}
-        </span>
+        <div className="mb-3 relative z-10">
+          <ZodiacSymbol signe={signeSolaire} size={60} color="#C9A460" />
+        </div>
         <h1 className="text-gold font-serif tracking-[4px] text-xl uppercase relative z-10">
           {signeSolaire}
         </h1>
@@ -307,7 +282,7 @@ const Horoscope = ({ onBack, onUpgrade }) => {
       </section>
 
       <div className="py-8 px-6 mb-8 bg-white/[0.02] rounded-[32px] border border-white/5 relative">
-        <span className="absolute top-4 left-6 text-4xl text-gold/20 font-serif">"</span>
+        <span className="absolute top-4 left-6 text-4xl text-gold/20 font-serif">«</span>
         <p className="italic font-serif text-base text-cream/90 leading-[1.8] text-center relative z-10 px-2">
           {lectureComplete?.message || horoscope.message}
         </p>
@@ -316,7 +291,7 @@ const Horoscope = ({ onBack, onUpgrade }) => {
             {lectureComplete.planete.nom} · maison {lectureComplete.maison} · {lectureComplete.significationMaison}
           </p>
         )}
-        <span className="absolute bottom-0 right-6 text-4xl text-gold/20 font-serif">"</span>
+        <span className="absolute bottom-0 right-6 text-4xl text-gold/20 font-serif">»</span>
       </div>
 
       {horoscope.tags && (
@@ -346,13 +321,15 @@ const Horoscope = ({ onBack, onUpgrade }) => {
             </div>
             <Card className="bg-gradient-to-br from-[#120E22] to-[#1C2040] border-gold/20 p-5">
               <div className="flex items-start gap-4 mb-3">
-                <span className="text-3xl text-gold mt-1">{transitDominant.symbole}</span>
+                <div className="mt-1">
+                  <PlanetCircle planete={transitDominant.planete} size="sm" couleur="#C9A460" />
+                </div>
                 <div>
                   <p className="font-serif text-base text-cream">
                     {transitDominant.planete} en {transitDominant.signe}
                   </p>
                   <p className="text-[9px] text-gold/40 tracking-widest uppercase mt-0.5">
-                    Maison {transitDominant.maison} · {transitDominant.signification}
+                    Maison {transitDominant.maison}
                   </p>
                 </div>
               </div>
@@ -421,12 +398,11 @@ const Horoscope = ({ onBack, onUpgrade }) => {
           </div>
 
           <div className="bg-gradient-to-br from-card to-night border border-white/5 rounded-[28px] p-6 space-y-6">
-            {/* Perspective Hebdomadaire personnalisée */}
             {perspectiveHebdo && (
               <div>
                 <h4 className="text-[10px] text-gold tracking-[3px] uppercase mb-3 font-black">Perspective Hebdomadaire</h4>
                 <div className="flex items-start gap-3 mb-2">
-                  <span className="text-lg text-gold/60">{perspectiveHebdo.symbole}</span>
+                  <PlanetCircle planete={perspectiveHebdo.planete} size="sm" couleur="#C9A460" />
                   <div>
                     <p className="text-gold/50 text-[10px] tracking-widest uppercase">
                       {perspectiveHebdo.planete} en {perspectiveHebdo.signe} · M{perspectiveHebdo.maison}
@@ -443,12 +419,11 @@ const Horoscope = ({ onBack, onUpgrade }) => {
               <div className="h-px bg-white/5 w-1/2 mx-auto" />
             )}
 
-            {/* Perspective Mensuelle personnalisée */}
             {perspectiveMensuelle && (
               <div>
                 <h4 className="text-[10px] text-gold tracking-[3px] uppercase mb-3 font-black">Climat Mensuel</h4>
                 <div className="flex items-start gap-3 mb-2">
-                  <span className="text-lg text-gold/60">{perspectiveMensuelle.symbole}</span>
+                  <PlanetCircle planete={perspectiveMensuelle.planete} size="sm" couleur="#C9A460" />
                   <div>
                     <p className="text-gold/50 text-[10px] tracking-widest uppercase">
                       {perspectiveMensuelle.planete} en {perspectiveMensuelle.signe} · M{perspectiveMensuelle.maison}
@@ -461,7 +436,6 @@ const Horoscope = ({ onBack, onUpgrade }) => {
               </div>
             )}
 
-            {/* Fallback si pas de données */}
             {!perspectiveHebdo && !perspectiveMensuelle && (
               <>
                 <div>

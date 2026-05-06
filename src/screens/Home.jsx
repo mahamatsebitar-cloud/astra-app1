@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import Card from '../components/ui/Card';
 import Tag from '../components/ui/Tag';
 import PlanetCircle from '../components/ui/PlanetCircle';
+import ZodiacSymbol from '../components/ui/ZodiacSymbol';
 import AstraSymbol from '../components/ui/AstraSymbol';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
@@ -22,17 +23,6 @@ const MESSAGES_SAISONNIERS = {
   ete: () => import('../data/messagesEte'),
   automne: () => import('../data/messagesAutomne'),
   hiver: () => import('../data/messagesHiver'),
-};
-
-const ZODIAC_SYMBOLS = {
-  "Bélier": "♈", "Taureau": "♉", "Gémeaux": "♊", "Cancer": "♋",
-  "Lion": "♌", "Vierge": "♍", "Balance": "♎", "Scorpion": "♏",
-  "Sagittaire": "♐", "Capricorne": "♑", "Verseau": "♒", "Poissons": "♓"
-};
-
-const PLANETE_SYMBOLS = {
-  "Lune": "☽", "Mercure": "☿", "Vénus": "♀", "Mars": "♂",
-  "Jupiter": "♃", "Saturne": "♄"
 };
 
 const INFOS_MOUVEMENTS = {
@@ -214,7 +204,7 @@ const Home = ({ onHoroscope, onProfil }) => {
       {/* Card Signe Principal */}
       <Card className="flex items-center gap-4 border-gold/20 bg-gradient-to-r from-card to-[#1A1D3D]">
         <div className="w-14 h-14 rounded-full border border-gold/30 flex items-center justify-center bg-[#141731] shrink-0">
-          <span className="text-gold text-2xl font-serif">{ZODIAC_SYMBOLS[signeSolaire] + '\uFE0E'}</span>
+          <ZodiacSymbol signe={signeSolaire} size={28} color="#C9A460" />
         </div>
         <div className="overflow-hidden text-left flex-1">
           <p className="text-[11px] text-gold tracking-wide uppercase font-sans font-bold">Soleil en {signeSolaire}</p>
@@ -239,11 +229,11 @@ const Home = ({ onHoroscope, onProfil }) => {
           <div className="flex-1 h-px bg-[#1C2040]" />
           {planeteActive ? (
             <Tag>
-              <span className="astro-symbol">{PLANETE_SYMBOLS[planeteActive.nom] || "✦"}{"\uFE0E"}</span> {planeteActive.nom} active
+              <PlanetCircle planete={planeteActive.nom} size="sm" couleur={planeteActive.couleur} /> {planeteActive.nom} active
               {messagePersonnalise?.maison && <span className="ml-1 text-gold/50">· M{messagePersonnalise.maison}</span>}
             </Tag>
           ) : (
-            <Tag><span className="astro-symbol">♄{"\uFE0E"}</span> Saturne actif</Tag>
+            <Tag><PlanetCircle planete="Saturne" size="sm" couleur="#C9A460" /> Saturne actif</Tag>
           )}
         </div>
         <Card className="relative overflow-hidden border-gold/10">
@@ -273,7 +263,7 @@ const Home = ({ onHoroscope, onProfil }) => {
               onClick={() => setSelectedPlanet(planete)}
               className="flex items-center gap-3 py-3 hover:bg-white/5 transition-all active:scale-[0.98] group cursor-pointer border-border/20"
             >
-              <PlanetCircle size="sm" symbole={planete.symbole} couleur={planete.couleur} />
+              <PlanetCircle planete={planete.nom} size="sm" couleur={planete.couleur} symbole={planete.symbole} />
               <div className="flex-1 text-left">
                 <div className="flex items-center gap-2">
                   <p className="text-cream text-[13px] font-serif">{planete.nom}</p>
@@ -326,7 +316,7 @@ const Home = ({ onHoroscope, onProfil }) => {
         <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-6" onClick={() => setSelectedPlanet(null)}>
           <div className="bg-[#0E1228] border border-gold/30 rounded-2xl p-8 max-w-sm w-full text-center" onClick={e => e.stopPropagation()}>
             <div className="mb-4 flex justify-center">
-               <PlanetCircle size="lg" symbole={selectedPlanet.symbole} couleur={selectedPlanet.couleur} />
+               <PlanetCircle planete={selectedPlanet.nom} size="lg" couleur={selectedPlanet.couleur} symbole={selectedPlanet.symbole} />
             </div>
             <h2 className="font-serif text-xl text-gold mb-1">{selectedPlanet.nom}</h2>
             {selectedPlanet.maison && (

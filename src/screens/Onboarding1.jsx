@@ -1,3 +1,4 @@
+// src/screens/Onboarding1.jsx
 import React, { useState } from "react";
 import Button from "../components/ui/Button";
 
@@ -51,7 +52,7 @@ const Onboarding1 = ({ onNext }) => {
         <svg width="80" height="60" viewBox="0 0 80 60" fill="none">
           <circle cx="40" cy="30" r="22" stroke="var(--color-gold)" strokeWidth="0.5" strokeDasharray="2 2" />
           <circle cx="40" cy="30" r="18" stroke="var(--color-gold)" strokeWidth="1" fill="none" />
-          <text x="40" y="36" textAnchor="middle" fontSize="18" fill="var(--color-gold)" className="font-serif astro-symbol">
+          <text x="40" y="36" textAnchor="middle" fontSize="18" fill="var(--color-gold)" className="font-serif">
             ♒
           </text>
         </svg>

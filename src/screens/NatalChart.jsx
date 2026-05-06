@@ -5,6 +5,7 @@ import { useSubscription } from '../hooks/useSubscription';
 import { getThemeNatal } from '../services/astroService';
 import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS } from '../data/lecturesMaisons';
 import { ASPECTS_TEXTE } from '../services/astroService';
+import PlanetCircle from '../components/ui/PlanetCircle';
 import PremiumGate from '../components/ui/PremiumGate';
 
 const INTERPRETATIONS = {
@@ -45,13 +46,13 @@ const INTERPRETATIONS = {
 };
 
 const PLANETES_NATALES = [
-  { nom: "Soleil", symbole: "☉\uFE0E", key: "soleil", couleur: "#C9A460" },
-  { nom: "Lune", symbole: "☽\uFE0E", key: "lune", couleur: "#C8C4D8" },
-  { nom: "Mercure", symbole: "☿\uFE0E", key: "mercure", couleur: "#9B97B0" },
-  { nom: "Vénus", symbole: "♀\uFE0E", key: "venus", couleur: "#C17B8A" },
-  { nom: "Mars", symbole: "♂\uFE0E", key: "mars", couleur: "#E05C5C" },
-  { nom: "Jupiter", symbole: "♃\uFE0E", key: "jupiter", couleur: "#7B9ECB" },
-  { nom: "Saturne", symbole: "♄\uFE0E", key: "saturne", couleur: "#C9A460" }
+  { nom: "Soleil", key: "soleil", couleur: "#C9A460" },
+  { nom: "Lune", key: "lune", couleur: "#C8C4D8" },
+  { nom: "Mercure", key: "mercure", couleur: "#9B97B0" },
+  { nom: "Vénus", key: "venus", couleur: "#C17B8A" },
+  { nom: "Mars", key: "mars", couleur: "#E05C5C" },
+  { nom: "Jupiter", key: "jupiter", couleur: "#7B9ECB" },
+  { nom: "Saturne", key: "saturne", couleur: "#C9A460" }
 ];
 
 const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
@@ -84,7 +85,6 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
       
       return {
         nom: def.nom,
-        symbole: def.symbole,
         signe: data.signe,
         degres: data.degres,
         minutes: data.minutes,
@@ -129,6 +129,7 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
 
     const degToRad = (deg) => ((deg - 90) * Math.PI) / 180;
 
+    // Symboles zodiacaux en texte simple (canvas gère correctement le \uFE0E)
     const symboles = ['♈\uFE0E', '♉\uFE0E', '♊\uFE0E', '♋\uFE0E', '♌\uFE0E', '♍\uFE0E', '♎\uFE0E', '♏\uFE0E', '♐\uFE0E', '♑\uFE0E', '♒\uFE0E', '♓\uFE0E'];
     symboles.forEach((s, i) => {
       const angle = degToRad(i * 30 + 15);
@@ -165,7 +166,9 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
       ctx.font = '11px serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(p.symbole || '?', x, y);
+      // Utiliser une abréviation pour les planètes dans le canvas
+      const abrev = p.nom.charAt(0);
+      ctx.fillText(abrev, x, y);
     });
 
     ctx.fillStyle = '#C9A460';
@@ -205,9 +208,7 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
             onClick={() => setPlaneteSelectionnee(p)}
             className="flex items-center gap-3 py-3 cursor-pointer hover:bg-white/5 transition-all rounded-lg px-2 border-b border-border/5"
           >
-            <div className="w-8 h-8 rounded-full border border-gold/30 flex items-center justify-center text-gold">
-              <span className="font-serif">{p.symbole}</span>
-            </div>
+            <PlanetCircle planete={p.nom} size="sm" couleur={p.couleur} />
             <div className="flex-1 text-left">
               <p className="text-cream text-[13px] font-serif">{p.nom}</p>
               <p className="text-muted text-[10px]">
@@ -248,7 +249,9 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
             className="bg-[#0E1228] border border-gold/30 rounded-3xl p-8 max-w-sm w-full text-center relative shadow-2xl shadow-gold/20"
             onClick={e => e.stopPropagation()}
           >
-            <div className="text-6xl text-gold mb-4 font-serif">{planeteSelectionnee.symbole}</div>
+            <div className="mb-4 flex justify-center">
+              <PlanetCircle planete={planeteSelectionnee.nom} size="lg" couleur={planeteSelectionnee.couleur} />
+            </div>
             <h2 className="font-serif text-xl text-gold mb-1">{planeteSelectionnee.nom}</h2>
             <p className="text-muted text-[10px] uppercase tracking-widest mb-2">
               en {planeteSelectionnee.signe}
@@ -261,7 +264,6 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
             )}
             <div className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent mb-6" />
             
-            {/* Lecture personnalisée Premium ou interprétation gratuite */}
             {isPremiumUser && planeteSelectionnee.lectureMaison ? (
               <p className="text-cream/90 text-sm leading-relaxed italic font-serif">
                 « {planeteSelectionnee.lectureMaison} »

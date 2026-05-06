@@ -1,16 +1,13 @@
+// src/screens/Compatibilite.jsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Card from '../components/ui/Card';
+import ZodiacSymbol from '../components/ui/ZodiacSymbol';
+import PlanetCircle from '../components/ui/PlanetCircle';
 import PremiumGate from '../components/ui/PremiumGate';
 import { useFriends } from '../hooks/useFriends';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { getHoroscopeComplet } from '../services/horoscopeService';
-
-const ZODIAC_SYMBOLS = {
-  "Bélier": "♈", "Taureau": "♉", "Gémeaux": "♊", "Cancer": "♋",
-  "Lion": "♌", "Vierge": "♍", "Balance": "♎", "Scorpion": "♏",
-  "Sagittaire": "♐", "Capricorne": "♑", "Verseau": "♒", "Poissons": "♓"
-};
 
 const getScoreColor = (score) => {
   if (score >= 80) return '#5CAE8A';
@@ -60,7 +57,7 @@ const Compatibilite = ({ onUpgrade }) => {
     getShareLink
   } = useFriends();
 
-  const [vue, setVue] = useState('liste'); // 'liste' | 'detail' | 'profil'
+  const [vue, setVue] = useState('liste');
   const [amiSelectionne, setAmiSelectionne] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -80,7 +77,6 @@ const Compatibilite = ({ onUpgrade }) => {
     }
   }, [amiSelectionne]);
 
-  // Log la vue quand on consulte la compatibilité d'un ami
   useEffect(() => {
     if (vue === 'detail' && amiSelectionne?.ami?.id) {
       logView(amiSelectionne.ami.id);
@@ -117,7 +113,7 @@ const Compatibilite = ({ onUpgrade }) => {
     }
   };
 
-  // ━━━ VUE 3 — PROFIL D'UN AMI ━━━
+  // VUE 3 — PROFIL D'UN AMI
   if (vue === 'profil' && amiSelectionne) {
     const ami = amiSelectionne.ami || amiSelectionne;
     const horoAmi = getHoroscopeComplet(ami.signe_solaire);
@@ -133,7 +129,9 @@ const Compatibilite = ({ onUpgrade }) => {
         </div>
 
         <div className="flex flex-col items-center py-8">
-          <span className="text-7xl mb-4" style={{ fontVariantEmoji: 'text' }}>{ZODIAC_SYMBOLS[ami.signe_solaire] || "✨"}</span>
+          <div className="mb-4">
+            <ZodiacSymbol signe={ami.signe_solaire} size={70} color="#C9A460" />
+          </div>
           <h2 className="font-serif text-2xl text-cream">{ami.nom}</h2>
           <p className="text-muted text-xs mt-1">@{ami.username || '...'}</p>
           {tempsRelatif && <p className="text-muted/40 text-[10px] mt-1">{tempsRelatif}</p>}
@@ -144,7 +142,10 @@ const Compatibilite = ({ onUpgrade }) => {
           <div className="w-px h-3 bg-white/10" />
           <span className="text-cream/80">↑ {ami.ascendant || "Asc"}</span>
           <div className="w-px h-3 bg-white/10" />
-          <span className="text-cream/80">☽ {ami.signe_lunaire || "Lune"}</span>
+          <span className="text-cream/80 flex items-center gap-1">
+            <PlanetCircle planete="Lune" size="sm" couleur="#C8C4D8" />
+            {ami.signe_lunaire || "Lune"}
+          </span>
         </div>
 
         <Card className="p-5 border-white/5 bg-card/30">
@@ -162,7 +163,7 @@ const Compatibilite = ({ onUpgrade }) => {
     );
   }
 
-  // ━━━ VUE 2 — DÉTAIL COMPATIBILITÉ ━━━
+  // VUE 2 — DÉTAIL COMPATIBILITÉ
   if (vue === 'detail' && amiSelectionne) {
     const ami = amiSelectionne.ami || amiSelectionne;
     const comp = getCompatibilityWith(ami);
@@ -184,7 +185,9 @@ const Compatibilite = ({ onUpgrade }) => {
         <div className="bg-card/80 backdrop-blur-md border border-white/5 rounded-[32px] p-8 space-y-8 shadow-2xl relative overflow-hidden">
           <div className="flex justify-around items-center relative z-10">
             <div className="text-center group">
-              <span className="text-5xl mb-2 block transition-transform group-hover:scale-110 duration-500" style={{ fontVariantEmoji: 'text' }}>{ZODIAC_SYMBOLS[profile?.signe_solaire] || "✨"}</span>
+              <div className="mb-2 transition-transform group-hover:scale-110 duration-500">
+                <ZodiacSymbol signe={profile?.signe_solaire} size={50} color="#C9A460" />
+              </div>
               <p className="text-gold text-[9px] uppercase tracking-[0.2em] font-black">Toi</p>
             </div>
 
@@ -203,7 +206,9 @@ const Compatibilite = ({ onUpgrade }) => {
             </div>
 
             <div className="text-center group">
-              <span className="text-5xl mb-2 block transition-transform group-hover:scale-110 duration-500" style={{ fontVariantEmoji: 'text' }}>{ZODIAC_SYMBOLS[ami.signe_solaire] || "✨"}</span>
+              <div className="mb-2 transition-transform group-hover:scale-110 duration-500">
+                <ZodiacSymbol signe={ami.signe_solaire} size={50} color="#C9A460" />
+              </div>
               <p className="text-gold text-[9px] uppercase tracking-[0.2em] font-black">{ami.nom?.split(' ')[0]}</p>
             </div>
           </div>
@@ -249,7 +254,7 @@ const Compatibilite = ({ onUpgrade }) => {
     );
   }
 
-  // ━━━ VUE 1 — LISTE DES ALLIANCES ━━━
+  // VUE 1 — LISTE DES ALLIANCES
   return (
     <div ref={scrollRef} className="w-full space-y-8 pb-24 px-4 animate-in fade-in duration-700">
       <header className="flex justify-between items-end pt-8">
