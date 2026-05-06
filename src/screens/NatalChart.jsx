@@ -45,13 +45,13 @@ const INTERPRETATIONS = {
 };
 
 const PLANETES_NATALES = [
-  { nom: "Soleil", symbole: "☉", key: "soleil", couleur: "#C9A460" },
-  { nom: "Lune", symbole: "☽", key: "lune", couleur: "#C8C4D8" },
-  { nom: "Mercure", symbole: "☿", key: "mercure", couleur: "#9B97B0" },
-  { nom: "Vénus", symbole: "♀", key: "venus", couleur: "#C17B8A" },
-  { nom: "Mars", symbole: "♂", key: "mars", couleur: "#E05C5C" },
-  { nom: "Jupiter", symbole: "♃", key: "jupiter", couleur: "#7B9ECB" },
-  { nom: "Saturne", symbole: "♄", key: "saturne", couleur: "#C9A460" }
+  { nom: "Soleil", symbole: "☉\uFE0E", key: "soleil", couleur: "#C9A460" },
+  { nom: "Lune", symbole: "☽\uFE0E", key: "lune", couleur: "#C8C4D8" },
+  { nom: "Mercure", symbole: "☿\uFE0E", key: "mercure", couleur: "#9B97B0" },
+  { nom: "Vénus", symbole: "♀\uFE0E", key: "venus", couleur: "#C17B8A" },
+  { nom: "Mars", symbole: "♂\uFE0E", key: "mars", couleur: "#E05C5C" },
+  { nom: "Jupiter", symbole: "♃\uFE0E", key: "jupiter", couleur: "#7B9ECB" },
+  { nom: "Saturne", symbole: "♄\uFE0E", key: "saturne", couleur: "#C9A460" }
 ];
 
 const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
@@ -129,14 +129,14 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
 
     const degToRad = (deg) => ((deg - 90) * Math.PI) / 180;
 
-    const symboles = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
+    const symboles = ['♈\uFE0E', '♉\uFE0E', '♊\uFE0E', '♋\uFE0E', '♌\uFE0E', '♍\uFE0E', '♎\uFE0E', '♏\uFE0E', '♐\uFE0E', '♑\uFE0E', '♒\uFE0E', '♓\uFE0E'];
     symboles.forEach((s, i) => {
       const angle = degToRad(i * 30 + 15);
       ctx.fillStyle = '#5C5A7A';
       ctx.font = '12px serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(s + '\uFE0E', centre + 108 * Math.cos(angle), centre + 108 * Math.sin(angle));
+      ctx.fillText(s, centre + 108 * Math.cos(angle), centre + 108 * Math.sin(angle));
     });
 
     const planets = (planetesNatales && planetesNatales.length > 0) ? planetesNatales : [];
@@ -163,11 +163,15 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
 
       ctx.fillStyle = '#C9A460';
       ctx.font = '11px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillText(p.symbole || '?', x, y);
     });
 
     ctx.fillStyle = '#C9A460';
     ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillText('ASTRA', centre, centre);
 
   }, [planetesNatales]);
@@ -202,7 +206,7 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
             className="flex items-center gap-3 py-3 cursor-pointer hover:bg-white/5 transition-all rounded-lg px-2 border-b border-border/5"
           >
             <div className="w-8 h-8 rounded-full border border-gold/30 flex items-center justify-center text-gold">
-              <span style={{ fontVariantEmoji: 'text' }}>{p.symbole}</span>
+              <span className="font-serif">{p.symbole}</span>
             </div>
             <div className="flex-1 text-left">
               <p className="text-cream text-[13px] font-serif">{p.nom}</p>
@@ -228,7 +232,7 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
               <h4 className="text-cream font-serif text-base tracking-wide">Vos Nœuds Lunaires</h4>
               <p className="text-[11px] text-muted/70 italic font-serif mt-1">Le fil invisible de votre destin</p>
             </div>
-            <span className="text-gold/80 text-3xl transition-transform group-hover:translate-x-2 drop-shadow-[0_0_8px_rgba(201,164,96,0.3)]">☊</span>
+            <span className="text-gold/80 text-3xl transition-transform group-hover:translate-x-2 drop-shadow-[0_0_8px_rgba(201,164,96,0.3)]">☊\uFE0E</span>
           </div>
           <div className="absolute inset-0 bg-gold/5 opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
@@ -244,7 +248,7 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
             className="bg-[#0E1228] border border-gold/30 rounded-3xl p-8 max-w-sm w-full text-center relative shadow-2xl shadow-gold/20"
             onClick={e => e.stopPropagation()}
           >
-            <div className="text-6xl text-gold mb-4" style={{ fontVariantEmoji: 'text' }}>{planeteSelectionnee.symbole}</div>
+            <div className="text-6xl text-gold mb-4 font-serif">{planeteSelectionnee.symbole}</div>
             <h2 className="font-serif text-xl text-gold mb-1">{planeteSelectionnee.nom}</h2>
             <p className="text-muted text-[10px] uppercase tracking-widest mb-2">
               en {planeteSelectionnee.signe}
@@ -260,7 +264,7 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
             {/* Lecture personnalisée Premium ou interprétation gratuite */}
             {isPremiumUser && planeteSelectionnee.lectureMaison ? (
               <p className="text-cream/90 text-sm leading-relaxed italic font-serif">
-                "{planeteSelectionnee.lectureMaison}"
+                « {planeteSelectionnee.lectureMaison} »
               </p>
             ) : (
               <PremiumGate 
@@ -269,7 +273,7 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
                 preview={false}
               >
                 <p className="text-cream/90 text-sm leading-relaxed italic font-serif">
-                  "{planeteSelectionnee.lectureMaison || planeteSelectionnee.interpretation}"
+                  « {planeteSelectionnee.lectureMaison || planeteSelectionnee.interpretation} »
                 </p>
               </PremiumGate>
             )}

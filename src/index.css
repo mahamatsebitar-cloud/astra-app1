@@ -11,6 +11,10 @@
   --font-serif: "Georgia", serif;
 }
 
+* {
+  -webkit-font-smoothing: antialiased;
+}
+
 body {
   background-color: var(--color-night);
   color: var(--color-cream);

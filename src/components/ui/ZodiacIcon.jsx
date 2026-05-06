@@ -1,22 +1,36 @@
+// src/components/ui/ZodiacIcon.jsx
 import React from 'react';
 
-const ZodiacIcon = ({ signe, className = "" }) => {
-  const paths = {
-    verseau: (
-      <path d="M2.5 7.5C4.16667 5.83333 5.83333 5.83333 7.5 7.5C9.16667 9.16667 10.8333 9.16667 12.5 7.5C14.1667 5.83333 15.8333 5.83333 17.5 7.5C19.1667 9.16667 20.8333 9.16667 22.5 7.5M2.5 14.5C4.16667 12.8333 5.83333 12.8333 7.5 14.5C9.16667 16.1667 10.8333 16.1667 12.5 14.5C14.1667 12.8333 15.8333 12.8333 17.5 14.5C19.1667 16.1667 20.8333 16.1667 22.5 14.5" 
-            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    ),
-    // Ajoute les autres ici plus tard...
-  };
-
-  const signeKey = signe ? signe.toLowerCase() : '';
-  if (!paths[signeKey]) return null;
-
-  return (
-    <svg viewBox="0 0 25 25" fill="none" className={`inline-block ${className}`} style={{ color: 'var(--color-gold)' }}>
-      {paths[signeKey]}
-    </svg>
-  );
+const ZODIAC_SYMBOLS = {
+  'Bélier':      '♈\uFE0E',
+  'Taureau':     '♉\uFE0E',
+  'Gémeaux':     '♊\uFE0E',
+  'Cancer':      '♋\uFE0E',
+  'Lion':        '♌\uFE0E',
+  'Vierge':      '♍\uFE0E',
+  'Balance':     '♎\uFE0E',
+  'Scorpion':    '♏\uFE0E',
+  'Sagittaire':  '♐\uFE0E',
+  'Capricorne':  '♑\uFE0E',
+  'Verseau':     '♒\uFE0E',
+  'Poissons':    '♓\uFE0E',
 };
 
-export default ZodiacIcon;
+export default function ZodiacIcon({ signe, size = 24, className = '' }) {
+  const symbol = ZODIAC_SYMBOLS[signe] || '✦\uFE0E';
+  return (
+    <span
+      className={className}
+      style={{
+        fontSize: size,
+        color: '#C9A460',
+        fontFamily: 'Georgia, serif',
+        lineHeight: 1,
+        display: 'inline-block',
+        userSelect: 'none',
+      }}
+    >
+      {symbol}
+    </span>
+  );
+}
