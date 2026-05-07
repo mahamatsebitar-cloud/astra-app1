@@ -1,59 +1,49 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import admin from "npm:firebase-admin";
 
-const serviceAccount = JSON.parse(Deno.env.get("FIREBASE_SERVICE_ACCOUNT")!);
-
-if (!admin.apps.length) {
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-}
+const ONESIGNAL_APP_ID = 'c6503127-f8e2-4571-89b9-71b860b0195e';
+const ONESIGNAL_REST_KEY = Deno.env.get('ONESIGNAL_REST_KEY')!;
 
 serve(async (req) => {
-  const { user_id, title, body, data } = await req.json();
+  const { user_id, title, body, signe } = await req.json();
 
-  if (!user_id) {
-    return new Response(JSON.stringify({ error: "Missing user_id" }), { status: 400 });
-  }
-
-  const supabase = createClient(
-    Deno.env.get("MY_SUPABASE_URL")!,
-    Deno.env.get("MY_SERVICE_ROLE_KEY")!
-  );
-
-  const { data: rows, error } = await supabase
-    .from("notification_tokens")
-    .select("token")
-    .eq("user_id", user_id);
-
-  if (error || !rows?.length) {
-    return new Response(JSON.stringify({ error: "No tokens found" }), { status: 404 });
-  }
-
-  const tokens = rows.map((r: { token: string }) => r.token);
-
-  const message = {
-    notification: { title, body },
-    data: data || {},
-    tokens: tokens.slice(0, 500),
+  // Envoie par segment de signe ou par user_id spécifique
+  const payload: any = {
+    app_id: ONESIGNAL_APP_ID,
+    headings: { fr: title },
+    contents: { fr: body },
+    // Notification riche style CoStar
+    android_channel_id: 'astra_horoscope',
+    small_icon: 'ic_launcher',
   };
 
-  try {
-    const response = await admin.messaging().sendEachForMulticast(message);
-    
-    // Ajoute ce log pour voir l'erreur exacte
-    if (response.failureCount > 0) {
-      response.responses.forEach((r, i) => {
-        if (!r.success) {
-          console.error(`Token ${i} failed:`, r.error?.code, r.error?.message);
-        }
-      });
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, sent: response.successCount, failed: response.failureCount }),
-      { status: 200 }
-    );
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+  // Si signe fourni → envoie à tous les users avec ce tag
+  if (signe) {
+    payload.filters = [
+      { field: 'tag', key: 'signe_solaire', relation: '=', value: signe }
+    ];
+  } else if (user_id) {
+    // Sinon envoie à un user spécifique via external_id
+    payload.include_aliases = { external_id: [user_id] };
+    payload.target_channel = 'push';
+  } else {
+    // Envoie à tous
+    payload.included_segments = ['All'];
   }
+
+  const res = await fetch('https://onesignal.com/api/v1/notifications', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Key ${ONESIGNAL_REST_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await res.json();
+  console.log('OneSignal result:', JSON.stringify(result));
+
+  return new Response(
+    JSON.stringify({ success: !result.errors, result }),
+    { status: 200 }
+  );
 });

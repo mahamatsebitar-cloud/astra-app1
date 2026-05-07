@@ -6,6 +6,7 @@ import { ProfileProvider } from './context/ProfileContext';
 import { useProfile } from './hooks/useProfile';
 import ConsentBanner from './components/ui/ConsentBanner';
 import { findUserByShareToken, sendFriendRequest } from './services/friendService';
+import { initOneSignal } from './lib/notifications';
 
 // Screens
 import Splash from './screens/Splash';
@@ -65,6 +66,13 @@ const AppContent = () => {
     };
     if (isAuthenticated) processInvite();
   }, [isAuthenticated, user?.id]);
+
+  // ━━━ INIT ONESIGNAL (après authentification) ━━━
+  useEffect(() => {
+    if (isAuthenticated && (window.cordova || window.Capacitor?.isNativePlatform())) {
+      initOneSignal();
+    }
+  }, [isAuthenticated]);
 
   // Scroll Reset à chaque changement d'écran
   useEffect(() => {

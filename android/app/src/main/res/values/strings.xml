@@ -4,4 +4,6 @@
     <string name="title_activity_main">Astra</string>
     <string name="package_name">com.nouren.astra</string>
     <string name="custom_url_scheme">com.nouren.astra</string>
+    <string name="onesignal_notification_channel_name">Astra Horoscope</string>
+    <string name="onesignal_notification_channel_description">Notifications d'horoscope et alertes astrales</string>
 </resources>

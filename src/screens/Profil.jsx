@@ -11,7 +11,8 @@ import CGU from './legal/CGU';
 import PolitiqueConfidentialite from './legal/PolitiqueConfidentialite';
 import MentionsLegales from './legal/MentionsLegales';
 import { deleteAccount } from '../services/authService';
-import { saveToken } from '../services/notificationService';
+import { supabase } from '../lib/supabase';
+import { getOneSignalUserId, setUserTags } from '../lib/notifications';
 
 const TITRES_PROFIL = {
   "Bélier": { masc: "Pionnier de l'aube", fem: "Pionnière de l'aube" },
@@ -76,19 +77,34 @@ const Profil = ({ onLogout, onNavigate }) => {
     console.log('🔔 handleEnableNotifications called');
     setNotifStatus('loading');
     try {
-      console.log('🔔 importing firebase...');
-      const { requestNotificationPermission } = await import('../lib/firebase');
-      console.log('🔔 calling requestNotificationPermission...');
-      const token = await requestNotificationPermission();
-      console.log('🔔 token received:', token);
-      if (token) {
-        await saveToken(user.id, token);
-        console.log('✅ Notification token saved');
-        setNotifStatus('granted');
-      } else {
-        console.log('❌ No token (permission denied or unsupported)');
+      const osId = await getOneSignalUserId();
+      console.log('🔔 OneSignal user ID:', osId);
+      
+      if (!osId) {
+        console.log('❌ No OneSignal ID (permission denied or unsupported)');
         setNotifStatus('denied');
+        return;
       }
+
+      // Sauvegarde l'ID OneSignal dans Supabase
+      const { error } = await supabase
+        .from('notification_tokens')
+        .upsert({
+          user_id: user.id,
+          token: osId,
+          platform: 'android_onesignal'
+        }, { onConflict: 'user_id' });
+
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        setNotifStatus('error');
+        return;
+      }
+
+      // Envoie les tags pour la segmentation
+      await setUserTags(profile.signe_solaire, profile.nom);
+      console.log('✅ Notification token saved + tags set');
+      setNotifStatus('granted');
     } catch (err) {
       console.error('🔔 Error:', err);
       setNotifStatus('error');
