@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
@@ -21,9 +22,6 @@ import Compatibilite from './screens/Compatibilite';
 import Profil from './screens/Profil';
 import NoeudLunaire from './screens/NoeudLunaire';
 import Abonnement from './screens/Abonnement';
-
-// Firebase pour les notifications
-import { saveToken } from './services/notificationService';
 
 const PUBLIC_SCREENS = ['splash', 'login', 'onb1', 'onb2', 'onb3', 'loading_theme', 'onbInvit'];
 const ONBOARDING_SCREENS = ['onb1', 'onb2', 'onb3', 'loading_theme', 'onbInvit'];
@@ -68,42 +66,6 @@ const AppContent = () => {
     if (isAuthenticated) processInvite();
   }, [isAuthenticated, user?.id]);
 
-  // ━━━ INITIALISATION NOTIFICATIONS PUSH ━━━
-  useEffect(() => {
-    if (!user?.id) return;
-    
-    const initNotifications = async () => {
-      try {
-        if ('serviceWorker' in navigator && 'PushManager' in window) {
-          const permission = await Notification.requestPermission();
-          if (permission === 'granted') {
-            const registration = await navigator.serviceWorker.ready;
-            let subscription = await registration.pushManager.getSubscription();
-            
-            if (!subscription) {
-              subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: 'BElNVxN3gT4JmMNx4Gq5YdOsl_9LJHnFJP1Y2M3N6K7p8QrStUvWxYzAbCdEfGhIjKlMnOpQrStUvWxYz1234'
-              });
-            }
-            
-            if (subscription) {
-              const token = subscription.endpoint;
-              await saveToken(user.id, token);
-              console.log('✅ Notification token saved');
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Notification init:', err);
-      }
-    };
-
-    // Demande la permission après 3 secondes (pas au chargement)
-    const timer = setTimeout(initNotifications, 3000);
-    return () => clearTimeout(timer);
-  }, [user?.id]);
-
   // Scroll Reset à chaque changement d'écran
   useEffect(() => {
     if (scrollRef.current) {
@@ -121,7 +83,6 @@ const AppContent = () => {
     
     if (authLoading || profileLoading) return;
 
-    // FORÇAGE : si on est sur 'loading', sortir immédiatement
     if (currentScreen === 'loading') {
       if (!isAuthenticated) {
         setCurrentScreen('splash');
@@ -221,7 +182,6 @@ const AppContent = () => {
 
   return (
     <div className="h-screen w-screen bg-night flex flex-col overflow-hidden">
-      {/* Zone de contenu */}
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
           <motion.div key={currentScreen} ref={scrollRef}
@@ -234,7 +194,6 @@ const AppContent = () => {
         </AnimatePresence>
       </div>
 
-      {/* BottomNav avec les vraies icônes SVG */}
       {showNav && (
         <nav className="h-16 bg-[#090C1E] border-t border-border flex items-center justify-around px-2 shrink-0">
           {[

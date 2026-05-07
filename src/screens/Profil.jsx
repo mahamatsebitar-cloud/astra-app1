@@ -11,8 +11,8 @@ import CGU from './legal/CGU';
 import PolitiqueConfidentialite from './legal/PolitiqueConfidentialite';
 import MentionsLegales from './legal/MentionsLegales';
 import { deleteAccount } from '../services/authService';
+import { saveToken } from '../services/notificationService';
 
-// --- Constantes & Helpers ---
 const TITRES_PROFIL = {
   "Bélier": { masc: "Pionnier de l'aube", fem: "Pionnière de l'aube" },
   "Taureau": { masc: "Gardien du vivant", fem: "Gardienne du vivant" },
@@ -46,8 +46,8 @@ const Profil = ({ onLogout, onNavigate }) => {
   const [legalScreen, setLegalScreen] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [notifStatus, setNotifStatus] = useState(null);
 
-  // --- Mémorisation des données calculées ---
   const displayNom = useMemo(() => profile?.nom || user?.user_metadata?.nom || "Voyageur", [profile, user]);
   const signeSolaire = useMemo(() => profile?.signe_solaire || "Bélier", [profile]);
   const titreProfil = useMemo(() => getTitreProfil(signeSolaire, displayNom), [signeSolaire, displayNom]);
@@ -72,7 +72,29 @@ const Profil = ({ onLogout, onNavigate }) => {
     footer: isActive ? 'Renouvellement automatique' : isTrial ? "Profitez de l'accès complet" : 'Accédez à toutes les fonctionnalités'
   }), [isActive, isTrial, planLabel, daysRemaining]);
 
-  // --- Handlers ---
+  const handleEnableNotifications = async () => {
+    console.log('🔔 handleEnableNotifications called');
+    setNotifStatus('loading');
+    try {
+      console.log('🔔 importing firebase...');
+      const { requestNotificationPermission } = await import('../lib/firebase');
+      console.log('🔔 calling requestNotificationPermission...');
+      const token = await requestNotificationPermission();
+      console.log('🔔 token received:', token);
+      if (token) {
+        await saveToken(user.id, token);
+        console.log('✅ Notification token saved');
+        setNotifStatus('granted');
+      } else {
+        console.log('❌ No token (permission denied or unsupported)');
+        setNotifStatus('denied');
+      }
+    } catch (err) {
+      console.error('🔔 Error:', err);
+      setNotifStatus('error');
+    }
+  };
+
   const handleLogout = async () => {
     if (await logout() && onLogout) onLogout();
   };
@@ -97,7 +119,6 @@ const Profil = ({ onLogout, onNavigate }) => {
     }
   };
 
-  // --- Renders conditionnels (Screens secondaires) ---
   if (legalScreen === 'cgu') return <CGU onBack={() => setLegalScreen(null)} />;
   if (legalScreen === 'confidentialite') return <PolitiqueConfidentialite onBack={() => setLegalScreen(null)} />;
   if (legalScreen === 'mentions') return <MentionsLegales onBack={() => setLegalScreen(null)} />;
@@ -113,10 +134,14 @@ const Profil = ({ onLogout, onNavigate }) => {
     );
   }
 
+  const notifDesc = notifStatus === 'granted' ? 'Notifications activées' 
+    : notifStatus === 'denied' ? 'Notifications refusées'
+    : notifStatus === 'loading' ? 'Activation...'
+    : 'Horoscope & alertes';
+
   return (
     <div className="w-full space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-2 duration-700">
       
-      {/* Header */}
       <div className="flex justify-between items-end px-1 pt-2">
         <div>
           <h3 className="font-serif text-xl text-cream">Sanctuaire</h3>
@@ -130,7 +155,6 @@ const Profil = ({ onLogout, onNavigate }) => {
         </button>
       </div>
 
-      {/* Section Identité */}
       <section className="flex flex-col items-center py-4">
         <div className="relative group">
           <div className="w-32 h-32 bg-[#141731] border-2 border-gold/20 rounded-full flex items-center justify-center shadow-2xl overflow-hidden transition-transform duration-500 group-hover:scale-105">
@@ -152,7 +176,6 @@ const Profil = ({ onLogout, onNavigate }) => {
           <p className="text-gold/60 text-[10px] tracking-[4px] uppercase mt-1.5 font-bold italic">{titreProfil}</p>
         </div>
 
-        {/* Big Three Badge */}
         <div className="mt-6 bg-card/40 backdrop-blur-xl border border-white/5 rounded-full px-6 py-2.5 text-[11px] tracking-wider flex items-center gap-4 shadow-2xl">
           <span className="text-gold font-bold">{signeSolaire}</span>
           <div className="w-px h-3 bg-white/10" />
@@ -168,7 +191,6 @@ const Profil = ({ onLogout, onNavigate }) => {
         </div>
       </section>
 
-      {/* Données Natales */}
       <section className="bg-card/40 backdrop-blur-md border border-white/5 rounded-[24px] p-6 mx-1">
         <div className="flex items-center gap-4 mb-6 opacity-40">
           <div className="h-px bg-gold/50 flex-1" />
@@ -190,7 +212,6 @@ const Profil = ({ onLogout, onNavigate }) => {
         </div>
       </section>
 
-      {/* Subscription Card */}
       <div 
         onClick={() => onNavigate?.('abonnement')}
         className="relative overflow-hidden bg-gradient-to-br from-[#120E22] to-[#1C2040] border border-gold/30 rounded-[24px] p-6 mx-1 cursor-pointer active:scale-[0.98] transition-all group shadow-xl shadow-gold/5"
@@ -206,29 +227,40 @@ const Profil = ({ onLogout, onNavigate }) => {
         <p className="text-muted/60 text-[10px]">{subscriptionInfo.footer}</p>
       </div>
 
-      {/* Configuration & Légal (Fusionnés pour la clarté) */}
       <div className="space-y-6 mx-1">
         <div className="space-y-2">
           <h4 className="text-muted text-[9px] tracking-[4px] uppercase ml-1 opacity-40 font-bold">Configuration</h4>
           <div className="bg-card/40 border border-white/5 rounded-2xl overflow-hidden shadow-lg">
-            {[
-              { icon: '🔔', title: 'Notifications', desc: 'Horoscope & alertes' },
-              { icon: '🌙', title: 'Interface', desc: 'Thème Sombre · Minuit' },
-              { icon: '🔒', title: 'Confidentialité', desc: 'Gérer mes données', action: () => setLegalScreen('confidentialite') }
-            ].map((param, i, arr) => (
-              <div 
-                key={i} 
-                onClick={param.action}
-                className={`flex items-center gap-4 p-4 hover:bg-white/[0.03] transition-colors cursor-pointer ${i !== arr.length - 1 ? 'border-b border-white/[0.03]' : ''}`}
-              >
-                <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-sm shadow-inner">{param.icon}</div>
-                <div className="flex-1">
-                  <p className="text-cream text-sm font-medium">{param.title}</p>
-                  <p className="text-muted text-[10px]">{param.desc}</p>
-                </div>
-                <span className="text-muted/20 text-xl font-light">›</span>
+            <button 
+              onClick={() => { console.log('🔔 CLICKED NOTIFICATIONS'); handleEnableNotifications(); }}
+              className="flex items-center gap-4 p-4 hover:bg-white/[0.03] transition-colors cursor-pointer border-b border-white/[0.03] w-full text-left"
+            >
+              <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-sm shadow-inner">🔔</div>
+              <div className="flex-1">
+                <p className="text-cream text-sm font-medium">Notifications</p>
+                <p className="text-muted text-[10px]">{notifDesc}</p>
               </div>
-            ))}
+              <span className="text-muted/20 text-xl font-light">›</span>
+            </button>
+            <div className="flex items-center gap-4 p-4 hover:bg-white/[0.03] transition-colors cursor-pointer">
+              <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-sm shadow-inner">🌙</div>
+              <div className="flex-1">
+                <p className="text-cream text-sm font-medium">Interface</p>
+                <p className="text-muted text-[10px]">Thème Sombre · Minuit</p>
+              </div>
+              <span className="text-muted/20 text-xl font-light">›</span>
+            </div>
+            <div 
+              onClick={() => setLegalScreen('confidentialite')}
+              className="flex items-center gap-4 p-4 hover:bg-white/[0.03] transition-colors cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-sm shadow-inner">🔒</div>
+              <div className="flex-1">
+                <p className="text-cream text-sm font-medium">Confidentialité</p>
+                <p className="text-muted text-[10px]">Gérer mes données</p>
+              </div>
+              <span className="text-muted/20 text-xl font-light">›</span>
+            </div>
           </div>
         </div>
 
@@ -252,7 +284,6 @@ const Profil = ({ onLogout, onNavigate }) => {
         </div>
       </div>
 
-      {/* Footer & Actions de compte */}
       <div className="pt-8 pb-4 space-y-6">
         <button
           onClick={handleLogout}
