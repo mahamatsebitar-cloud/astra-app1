@@ -69,8 +69,20 @@ const AppContent = () => {
 
   // ━━━ INIT ONESIGNAL (après authentification) ━━━
   useEffect(() => {
-    if (isAuthenticated && (window.cordova || window.Capacitor?.isNativePlatform())) {
-      initOneSignal();
+    if (isAuthenticated) {
+      console.log('🔔 Platform check:', {
+        cordova: !!window.cordova,
+        capacitor: !!window.Capacitor,
+        isNative: window.Capacitor?.isNativePlatform(),
+        platform: window.Capacitor?.getPlatform()
+      });
+      
+      if (window.Capacitor?.isNativePlatform()) {
+        console.log('🔔 Calling initOneSignal...');
+        initOneSignal();
+      } else {
+        console.log('❌ Not native platform — OneSignal skipped');
+      }
     }
   }, [isAuthenticated]);
 
