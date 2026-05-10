@@ -85,16 +85,18 @@ const Profil = ({ onLogout, onNavigate }) => {
         return;
       }
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('notification_tokens')
-        .insert({
+        .upsert({
           user_id: user.id,
           token: token,
           platform: 'android_fcm'
+        }, { 
+          onConflict: 'user_id',
+          ignoreDuplicates: false
         });
 
       console.error('❌ Supabase error:', JSON.stringify(error));
-      console.log('✅ Supabase data:', JSON.stringify(data));
 
       if (error) {
         setNotifStatus('error');
