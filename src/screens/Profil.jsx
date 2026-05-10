@@ -12,7 +12,7 @@ import PolitiqueConfidentialite from './legal/PolitiqueConfidentialite';
 import MentionsLegales from './legal/MentionsLegales';
 import { deleteAccount } from '../services/authService';
 import { supabase } from '../lib/supabase';
-import { getOneSignalUserId, setUserTags } from '../lib/notifications';
+import { requestNotificationPermission, setUserTags } from '../lib/notifications';
 
 const TITRES_PROFIL = {
   "Bélier": { masc: "Pionnier de l'aube", fem: "Pionnière de l'aube" },
@@ -74,19 +74,18 @@ const Profil = ({ onLogout, onNavigate }) => {
   }), [isActive, isTrial, planLabel, daysRemaining]);
 
   const handleEnableNotifications = async () => {
-    console.log('🔔 handleEnableNotifications called');
+    console.log('🔔 CLICKED NOTIFICATIONS');
     setNotifStatus('loading');
     try {
-      const osId = await getOneSignalUserId();
-      console.log('🔔 OneSignal user ID:', osId);
+      // Demande permission ET récupère l'ID en une seule étape
+      const osId = await requestNotificationPermission();
+      console.log('🔔 OneSignal ID received:', osId);
       
       if (!osId) {
-        console.log('❌ No OneSignal ID (permission denied or unsupported)');
         setNotifStatus('denied');
         return;
       }
 
-      // Sauvegarde l'ID OneSignal dans Supabase
       const { error } = await supabase
         .from('notification_tokens')
         .upsert({
@@ -101,12 +100,11 @@ const Profil = ({ onLogout, onNavigate }) => {
         return;
       }
 
-      // Envoie les tags pour la segmentation
       await setUserTags(profile.signe_solaire, profile.nom);
-      console.log('✅ Notification token saved + tags set');
+      console.log('✅ Token saved + tags set');
       setNotifStatus('granted');
     } catch (err) {
-      console.error('🔔 Error:', err);
+      console.error('❌ Error:', err);
       setNotifStatus('error');
     }
   };
