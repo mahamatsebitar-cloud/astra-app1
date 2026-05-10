@@ -21,7 +21,6 @@
     "ephemeris": "^2.2.0",
     "firebase": "^12.12.1",
     "framer-motion": "^12.38.0",
-    "onesignal-cordova-plugin": "^5.3.8",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

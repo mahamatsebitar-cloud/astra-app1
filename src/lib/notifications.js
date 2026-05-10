@@ -1,54 +1,57 @@
-import OneSignal from 'onesignal-cordova-plugin';
+import { PushNotifications } from '@capacitor/push-notifications';
+import { Capacitor } from '@capacitor/core';
 
-const ONESIGNAL_APP_ID = 'c6503127-f8e2-4571-89b9-71b860b0195e';
-
-export function initOneSignal() {
-  try {
-    console.log('🔔 initOneSignal: starting');
-    console.log('🔔 initOneSignal: OneSignal type =', typeof OneSignal);
-    OneSignal.initialize(ONESIGNAL_APP_ID);
-    console.log('✅ OneSignal initialized');
-  } catch (err) {
-    console.error('❌ OneSignal init error:', err.name, err.message);
+export async function initPushNotifications() {
+  if (!Capacitor.isNativePlatform()) {
+    console.log('❌ Not native — skip push init');
+    return;
   }
-}
 
-export async function requestNotificationPermission() {
-  try {
-    console.log('🔔 Step 1: checking OneSignal object:', typeof OneSignal);
-    console.log('🔔 Step 2: OneSignal.Notifications:', typeof OneSignal?.Notifications);
-    
-    const permitted = await OneSignal.Notifications.requestPermission(true);
-    console.log('🔔 Step 3: permission result:', permitted);
-    
-    if (!permitted) {
-      console.log('❌ Permission denied at Step 3');
-      return null;
-    }
+  // Vérifie/demande la permission
+  let permission = await PushNotifications.checkPermissions();
+  console.log('🔔 Current permission:', permission.receive);
 
-    for (let i = 0; i < 10; i++) {
-      const id = await OneSignal.User.getOnesignalId();
-      console.log(`🔔 Step 4 attempt ${i+1}: id =`, id);
-      if (id) {
-        console.log('✅ OneSignal ID:', id);
-        return id;
-      }
-      await new Promise(r => setTimeout(r, 500));
-    }
-    
-    console.log('❌ OneSignal ID still null after 5s');
-    return null;
-  } catch (err) {
-    console.error('❌ FULL ERROR:', err.name, err.message, err.stack);
+  if (permission.receive === 'prompt') {
+    permission = await PushNotifications.requestPermissions();
+    console.log('🔔 After request:', permission.receive);
+  }
+
+  if (permission.receive !== 'granted') {
+    console.log('❌ Permission denied');
     return null;
   }
+
+  // Enregistre le device
+  await PushNotifications.register();
+  console.log('🔔 register() called');
 }
 
-export async function setUserTags(signe, prenom) {
-  try {
-    OneSignal.User.addTags({ signe_solaire: signe, prenom });
-    console.log('✅ Tags set:', signe, prenom);
-  } catch (err) {
-    console.error('❌ Tag error:', err);
-  }
+export function getFCMToken() {
+  return new Promise((resolve) => {
+    if (!Capacitor.isNativePlatform()) {
+      resolve(null);
+      return;
+    }
+
+    // Timeout de sécurité 10 secondes
+    const timeout = setTimeout(() => {
+      console.log('❌ Token timeout');
+      resolve(null);
+    }, 10000);
+
+    PushNotifications.addListener('registration', (token) => {
+      clearTimeout(timeout);
+      console.log('✅ FCM Token:', token.value);
+      resolve(token.value);
+    });
+
+    PushNotifications.addListener('registrationError', (err) => {
+      clearTimeout(timeout);
+      console.error('❌ Registration error:', JSON.stringify(err));
+      resolve(null);
+    });
+
+    // Déclenche l'enregistrement
+    PushNotifications.register();
+  });
 }

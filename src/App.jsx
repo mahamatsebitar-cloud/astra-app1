@@ -1,12 +1,13 @@
 // src/App.jsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Capacitor } from '@capacitor/core';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { useProfile } from './hooks/useProfile';
 import ConsentBanner from './components/ui/ConsentBanner';
 import { findUserByShareToken, sendFriendRequest } from './services/friendService';
-import { initOneSignal } from './lib/notifications';
+import { initPushNotifications } from './lib/notifications';
 
 // Screens
 import Splash from './screens/Splash';
@@ -67,22 +68,10 @@ const AppContent = () => {
     if (isAuthenticated) processInvite();
   }, [isAuthenticated, user?.id]);
 
-  // ━━━ INIT ONESIGNAL (après authentification) ━━━
+  // ━━━ INIT PUSH NOTIFICATIONS (après authentification) ━━━
   useEffect(() => {
-    if (isAuthenticated) {
-      console.log('🔔 Platform check:', {
-        cordova: !!window.cordova,
-        capacitor: !!window.Capacitor,
-        isNative: window.Capacitor?.isNativePlatform(),
-        platform: window.Capacitor?.getPlatform()
-      });
-      
-      if (window.Capacitor?.isNativePlatform()) {
-        console.log('🔔 Calling initOneSignal...');
-        initOneSignal();
-      } else {
-        console.log('❌ Not native platform — OneSignal skipped');
-      }
+    if (isAuthenticated && Capacitor.isNativePlatform()) {
+      initPushNotifications();
     }
   }, [isAuthenticated]);
 

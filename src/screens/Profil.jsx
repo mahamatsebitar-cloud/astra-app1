@@ -12,7 +12,7 @@ import PolitiqueConfidentialite from './legal/PolitiqueConfidentialite';
 import MentionsLegales from './legal/MentionsLegales';
 import { deleteAccount } from '../services/authService';
 import { supabase } from '../lib/supabase';
-import { requestNotificationPermission, setUserTags } from '../lib/notifications';
+import { getFCMToken } from '../lib/notifications';
 
 const TITRES_PROFIL = {
   "Bélier": { masc: "Pionnier de l'aube", fem: "Pionnière de l'aube" },
@@ -77,11 +77,10 @@ const Profil = ({ onLogout, onNavigate }) => {
     console.log('🔔 CLICKED NOTIFICATIONS');
     setNotifStatus('loading');
     try {
-      // Demande permission ET récupère l'ID en une seule étape
-      const osId = await requestNotificationPermission();
-      console.log('🔔 OneSignal ID received:', osId);
-      
-      if (!osId) {
+      const token = await getFCMToken();
+      console.log('🔔 Token received:', token);
+
+      if (!token) {
         setNotifStatus('denied');
         return;
       }
@@ -90,8 +89,8 @@ const Profil = ({ onLogout, onNavigate }) => {
         .from('notification_tokens')
         .upsert({
           user_id: user.id,
-          token: osId,
-          platform: 'android_onesignal'
+          token: token,
+          platform: 'android_fcm'
         }, { onConflict: 'user_id' });
 
       if (error) {
@@ -100,8 +99,7 @@ const Profil = ({ onLogout, onNavigate }) => {
         return;
       }
 
-      await setUserTags(profile.signe_solaire, profile.nom);
-      console.log('✅ Token saved + tags set');
+      console.log('✅ FCM token saved');
       setNotifStatus('granted');
     } catch (err) {
       console.error('❌ Error:', err);
