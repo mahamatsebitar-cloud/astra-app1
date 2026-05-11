@@ -7,6 +7,23 @@ export async function initPushNotifications() {
     return;
   }
 
+  // 🔴 ÉTAPE CRUCIALE : Crée le canal de notification AVANT tout
+  try {
+    await PushNotifications.createChannel({
+      id: 'astra_default',
+      name: 'Notifications Astra',
+      description: 'Notifications quotidiennes de l\'app Astra',
+      importance: 5, // HIGH = affiche en pop-up, son, vibration
+      visibility: 1,  // PUBLIC = visible sur écran verrouillé
+      sound: 'default',
+      vibration: true,
+      lights: true
+    });
+    console.log('✅ Canal astra_default créé');
+  } catch (err) {
+    console.error('❌ Erreur création canal:', err);
+  }
+
   // Vérifie/demande la permission
   let permission = await PushNotifications.checkPermissions();
   console.log('🔔 Current permission:', permission.receive);
