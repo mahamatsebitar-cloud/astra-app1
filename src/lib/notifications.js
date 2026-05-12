@@ -24,6 +24,25 @@ export async function initPushNotifications() {
     console.error('❌ Erreur création canal:', err);
   }
 
+  // 🔴 ÉTAPE 3 : Écoute les notifications reçues quand l'app est ouverte
+  PushNotifications.addListener('pushNotificationReceived', (notification) => {
+    console.log('🔔 Notification reçue (app ouverte):', notification);
+    
+    // Émet l'événement pour le toast
+    window.dispatchEvent(new CustomEvent('astra-notification', {
+      detail: {
+        title: notification.title || '✦ Astra',
+        body: notification.body || 'Nouvelle notification',
+        data: notification.data
+      }
+    }));
+  });
+
+  // Écoute les clics sur notification
+  PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+    console.log('👆 Notification cliquée:', notification);
+  });
+
   // Vérifie/demande la permission
   let permission = await PushNotifications.checkPermissions();
   console.log('🔔 Current permission:', permission.receive);

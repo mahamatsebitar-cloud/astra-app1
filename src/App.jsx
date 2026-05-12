@@ -8,6 +8,7 @@ import { useProfile } from './hooks/useProfile';
 import ConsentBanner from './components/ui/ConsentBanner';
 import { findUserByShareToken, sendFriendRequest } from './services/friendService';
 import { initPushNotifications } from './lib/notifications';
+import { NotificationToast } from './components/NotificationToast'; // 🔴 ÉTAPE 4 : Import du Toast
 
 // Screens
 import Splash from './screens/Splash';
@@ -191,6 +192,9 @@ const AppContent = () => {
 
   return (
     <div className="h-screen w-screen bg-night flex flex-col overflow-hidden">
+      {/* 🔴 ÉTAPE 4 : Toast de notification */}
+      <NotificationToast />
+      
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
           <motion.div key={currentScreen} ref={scrollRef}
