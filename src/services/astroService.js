@@ -228,10 +228,10 @@ export const getAscendant = (heureStr) => {
   return signes[index];
 };
 
-// ━━━ 4. PLANÈTES DU JOUR ━━━
+// ━━━ 4. PLANÈTES DU JOUR (MODIFIÉ pour accepter targetDate) ━━━
 
-const getPlanetesDuJourFallback = () => {
-  const aujourd_hui = new Date();
+const getPlanetesDuJourFallback = (targetDate = null) => {
+  const aujourd_hui = targetDate || new Date();
   const refDate = new Date('2024-01-01');
   const joursEcoules = Math.floor((aujourd_hui - refDate) / 86400000);
 
@@ -271,9 +271,9 @@ const getPlanetesDuJourFallback = () => {
   });
 };
 
-export const getPlanetesDuJour = () => {
+export const getPlanetesDuJour = (targetDate = null) => {
   try {
-    const today = new Date();
+    const today = targetDate || new Date();
     today.setHours(12, 0, 0, 0);
 
     const result = ephemeris.getAllPlanets(today, 2.3522, 48.8566, 0);
@@ -311,7 +311,7 @@ export const getPlanetesDuJour = () => {
     });
   } catch (e) {
     console.warn('getPlanetesDuJour fallback:', e);
-    return getPlanetesDuJourFallback();
+    return getPlanetesDuJourFallback(targetDate);
   }
 };
 

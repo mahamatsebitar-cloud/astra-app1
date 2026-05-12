@@ -1,5 +1,5 @@
 // src/screens/Home.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
 import Tag from '../components/ui/Tag';
 import PlanetCircle from '../components/ui/PlanetCircle';
@@ -11,6 +11,9 @@ import { getPlanetesDuJour, getThemeNatal } from '../services/astroService';
 import { generateMessageDuJour, generateMessagePersonnalise } from '../services/messageGeneratorService';
 import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS, getVariationMouvement } from '../data/lecturesMaisons';
 import { getSaintDuJour, getPhaseLunaire, getSaisonActuelle } from '../data/identiteFrancaise';
+import { supabase } from '../lib/supabase';
+
+// ... RESTE IDENTIQUE
 
 const SIGNES = [
   "Bélier", "Taureau", "Gémeaux", "Cancer",
@@ -169,6 +172,63 @@ const Home = ({ onHoroscope, onProfil }) => {
       weekday: 'short', day: 'numeric', month: 'long', year: 'numeric'
     }).format(new Date());
   }, [todayStr]);
+
+  // ━━━ STOCKE LES MESSAGES DU JOUR ET DU LENDEMAIN ━━━
+  useEffect(() => {
+    if (!user?.id || !messageFinal || !profile) return;
+    
+    const storeMessages = async () => {
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      
+      const planete = messagePersonnalise?.planete || planeteActive || null;
+      
+      // 1. Stocke le message d'aujourd'hui
+      const { error: errToday } = await supabase
+        .from('daily_messages')
+        .upsert({
+          user_id: user.id,
+          date: todayStr,
+          message: messageFinal,
+          planete_nom: planete?.nom || null,
+          planete_signe: planete?.signe || null,
+          maison: messagePersonnalise?.maison || null,
+          source: messagePersonnalise?.source || 'general'
+        }, { onConflict: 'user_id,date' });
+      
+      if (errToday) console.error('Failed to store today message:', errToday);
+
+      // 2. Pré-calcule et stocke le message de demain
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      
+      try {
+        const messageDemain = generateMessagePersonnalise(profile, tomorrow);
+        
+        if (messageDemain) {
+          const { error: errTomorrow } = await supabase
+            .from('daily_messages')
+            .upsert({
+              user_id: user.id,
+              date: tomorrowStr,
+              message: messageDemain.message,
+              planete_nom: messageDemain.planete?.nom || null,
+              planete_signe: messageDemain.planete?.signe || null,
+              maison: messageDemain.maison || null,
+              source: messageDemain.source || 'maison'
+            }, { onConflict: 'user_id,date' });
+            
+          if (errTomorrow) console.error('Failed to store tomorrow message:', errTomorrow);
+          else console.log('✓ Message demain stocké:', tomorrowStr);
+        }
+      } catch (e) {
+        console.error('Failed to pre-calculate tomorrow message:', e);
+      }
+    };
+    
+    storeMessages();
+  }, [user?.id, messageFinal, messagePersonnalise, planeteActive, profile]);
 
   if (loading) {
     return (

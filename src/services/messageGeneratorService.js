@@ -196,14 +196,19 @@ function getMaisonTransit(planete, maisonsNatales) {
   return getMaison(degrees, maisonsNatales);
 }
 
-export function generateMessagePersonnalise(profile) {
+// ━━━ MODIFIÉ : accepte targetDate pour le pré-calcul J+1 ━━━
+export function generateMessagePersonnalise(profile, targetDate = null) {
   if (!profile?.date_naissance) return null;
 
   try {
     const lat = profile.latitude || 48.8566;
     const lng = profile.longitude || 2.3522;
 
-    // 1. Calcule le thème natal réel
+    // ─── DATE CIBLE (aujourd'hui par défaut, ou targetDate pour demain) ───
+    const dateRef = targetDate || new Date();
+    const dateStr = dateRef.toISOString().split('T')[0];
+
+    // 1. Calcule le thème natal réel (toujours basé sur la date de naissance)
     const theme = getThemeNatal(
       profile.date_naissance,
       profile.heure_naissance || '12:00',
@@ -213,12 +218,10 @@ export function generateMessagePersonnalise(profile) {
 
     if (!theme) return null;
 
-    // 2. Récupère les planètes du jour
-    const planetesDuJour = getPlanetesDuJour();
+    // 2. Récupère les planètes du jour CIBLE
+    const planetesDuJour = getPlanetesDuJour(dateRef);
 
     // 3. Planète prioritaire tournante selon la date du jour
-    const today = new Date();
-    const dateStr = today.toISOString().split('T')[0];
     const seed = getSeed(dateStr, profile.date_naissance);
 
     const planetesDisponibles = ["Lune", "Vénus", "Mars", "Mercure", "Jupiter", "Saturne"];
