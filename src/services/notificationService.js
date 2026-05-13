@@ -1,10 +1,12 @@
 // src/services/notificationService.js
 import { supabase } from '../lib/supabase';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 // ━━━ 1. SAUVEGARDER UN TOKEN ━━━
 export async function saveToken(userId, token) {
   try {
-    // Vérifie si le token existe déjà (pour éviter les doublons)
     const { data } = await supabase
       .from('notification_tokens')
       .select('id')
@@ -37,18 +39,18 @@ export async function getUserTokens(userId) {
   }
 }
 
-// ━━━ 3. ENVOYER UNE NOTIFICATION PUSH ━━━
+// ━━━ 3. ENVOYER UNE NOTIFICATION PUSH (bas niveau) ━━━
 export async function sendPushNotification(tokens, title, body, data = {}) {
   if (!tokens?.length) return { error: 'No tokens' };
 
   try {
     const response = await fetch(
-      `${supabase.supabaseUrl}/functions/v1/send-notification`,
+      `${SUPABASE_URL}/functions/v1/send-notification`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({ tokens, title, body, data }),
       }
@@ -60,7 +62,7 @@ export async function sendPushNotification(tokens, title, body, data = {}) {
   }
 }
 
-// ━━━ 4. NOTIFIER UN ÉVÉNEMENT SOCIAL ━━━
+// ━━━ 4. NOTIFIER UN ÉVÉNEMENT SOCIAL (haut niveau) ━━━
 export async function notifySocialEvent(targetUserId, actorNom, type) {
   try {
     const tokens = await getUserTokens(targetUserId);
@@ -68,16 +70,16 @@ export async function notifySocialEvent(targetUserId, actorNom, type) {
 
     const messages = {
       'ami_demande': {
-        title: 'Nouvelle connexion astrale ✦',
-        body: `${actorNom} souhaite rejoindre vos alliances`
+        title: '✦ Nouvelle alliance',
+        body: `${actorNom} veut rejoindre ton cercle astral`
       },
       'ami_accepte': {
-        title: 'Alliance confirmée ✦',
-        body: `${actorNom} a accepté votre invitation`
+        title: '✦ Alliance acceptée',
+        body: `${actorNom} a rejoint ton cercle — explorez votre affinité`
       },
       'compatibilite_vue': {
-        title: 'On consulte vos astres ✦',
-        body: `${actorNom} a consulté votre compatibilité`
+        title: '✦ Affinité explorée',
+        body: `${actorNom} a exploré votre compatibilité astrale`
       }
     };
 
@@ -101,3 +103,28 @@ export async function sendDailyHoroscope(tokens, message) {
     console.warn('sendDailyHoroscope error:', err);
   }
 }
+
+// ━━━ 6. ENVOYER NOTIFICATION SOCIALE SIMPLE (wrapper bas niveau) ━━━
+export const sendSocialNotification = async (userId, title, body) => {
+  try {
+    const tokens = await getUserTokens(userId);
+    if (!tokens.length) return;
+
+    const res = await fetch(
+      `${SUPABASE_URL}/functions/v1/send-notification`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ user_id: userId, title, body })
+      }
+    );
+
+    const result = await res.json();
+    console.log('📬 Notification sociale:', result);
+  } catch (err) {
+    console.warn('sendSocialNotification error:', err);
+  }
+};

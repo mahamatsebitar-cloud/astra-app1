@@ -1,12 +1,12 @@
 // src/services/friendService.js
 import { supabase } from '../lib/supabase';
+import { notifySocialEvent } from './notificationService';
 
 // ━━━ 1. RECHERCHE (par email OU username) ━━━
 export const searchUser = async (query, currentUserId) => {
   try {
     const clean = query.trim().replace(/^@/, '').toLowerCase();
 
-    // Recherche par username d'abord
     const { data: byUsername, error: errUser } = await supabase
       .from('profiles')
       .select('id, nom, signe_solaire, signe_lunaire, ascendant, username, share_token, last_seen_at')
@@ -14,7 +14,6 @@ export const searchUser = async (query, currentUserId) => {
       .neq('id', currentUserId)
       .limit(5);
 
-    // Recherche par email ensuite
     const { data: byEmail, error: errEmail } = await supabase
       .from('profiles')
       .select('id, nom, signe_solaire, signe_lunaire, ascendant, username, share_token, last_seen_at')
@@ -22,7 +21,6 @@ export const searchUser = async (query, currentUserId) => {
       .neq('id', currentUserId)
       .limit(5);
 
-    // Combine et dédoublonne
     const combined = [...(byUsername || []), ...(byEmail || [])];
     const unique = combined.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
 
@@ -32,7 +30,7 @@ export const searchUser = async (query, currentUserId) => {
   }
 };
 
-// ━━━ 2. RECHERCHE PAR EMAIL (compatibilité existante) ━━━
+// ━━━ 2. RECHERCHE PAR EMAIL ━━━
 export const searchUserByEmail = async (email) => {
   try {
     const cleanEmail = email.trim().toLowerCase();
@@ -50,7 +48,7 @@ export const searchUserByEmail = async (email) => {
   }
 };
 
-// ━━━ 3. TROUVER PAR SHARE TOKEN (lien de partage) ━━━
+// ━━━ 3. TROUVER PAR SHARE TOKEN ━━━
 export const findUserByShareToken = async (token) => {
   try {
     const { data, error } = await supabase
@@ -105,6 +103,16 @@ export const sendFriendRequest = async (senderId, receiverId) => {
       metadata: {}
     });
 
+    // ─── NOTIFICATION SOCIALE ───
+    const { data: senderProfile } = await supabase
+      .from('profiles')
+      .select('nom')
+      .eq('id', senderId)
+      .single();
+
+    const prenomSender = senderProfile?.nom?.split(' ')[0] || 'Quelqu\'un';
+    await notifySocialEvent(receiverId, prenomSender, 'ami_demande');
+
     return { data, error: null };
   } catch (error) {
     console.error("Erreur envoi demande:", error.message);
@@ -138,6 +146,16 @@ export const acceptFriendRequest = async (friendshipId, userId) => {
       metadata: {}
     });
 
+    // ─── NOTIFICATION SOCIALE ───
+    const { data: acceptorProfile } = await supabase
+      .from('profiles')
+      .select('nom')
+      .eq('id', userId)
+      .single();
+
+    const prenomAcceptor = acceptorProfile?.nom?.split(' ')[0] || 'Quelqu\'un';
+    await notifySocialEvent(friendship.sender_id, prenomAcceptor, 'ami_accepte');
+
     return { data, error: null };
   } catch (error) {
     console.error("Erreur acceptation demande:", error.message);
@@ -145,7 +163,7 @@ export const acceptFriendRequest = async (friendshipId, userId) => {
   }
 };
 
-// ━━━ 6. RÉCUPÉRER AMIS (avec profils complets) ━━━
+// ━━━ 6. RÉCUPÉRER AMIS ━━━
 export const getFriends = async (userId) => {
   try {
     const { data: friendships, error } = await supabase
@@ -242,6 +260,16 @@ export const logCompatibilityView = async (viewerId, viewedId) => {
       type: 'compatibilite_vue',
       metadata: {}
     });
+
+    // ─── NOTIFICATION SOCIALE ───
+    const { data: viewerProfile } = await supabase
+      .from('profiles')
+      .select('nom')
+      .eq('id', viewerId)
+      .single();
+
+    const prenomViewer = viewerProfile?.nom?.split(' ')[0] || 'Quelqu\'un';
+    await notifySocialEvent(viewedId, prenomViewer, 'compatibilite_vue');
   } catch (err) {
     console.warn('logCompatibilityView:', err);
   }
