@@ -39,7 +39,22 @@ export async function getUserTokens(userId) {
   }
 }
 
-// ━━━ 3. ENVOYER UNE NOTIFICATION PUSH (bas niveau) ━━━
+// ━━━ 3. VÉRIFIER SI L'USER VEUT DES NOTIFICATIONS ━━━
+async function isNotificationsEnabled(userId) {
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('notifications_enabled')
+      .eq('id', userId)
+      .single();
+    return data?.notifications_enabled !== false;
+  } catch (err) {
+    console.warn('isNotificationsEnabled error:', err);
+    return true;
+  }
+}
+
+// ━━━ 4. ENVOYER UNE NOTIFICATION PUSH (bas niveau) ━━━
 export async function sendPushNotification(tokens, title, body, data = {}) {
   if (!tokens?.length) return { error: 'No tokens' };
 
@@ -62,9 +77,15 @@ export async function sendPushNotification(tokens, title, body, data = {}) {
   }
 }
 
-// ━━━ 4. NOTIFIER UN ÉVÉNEMENT SOCIAL (haut niveau) ━━━
+// ━━━ 5. NOTIFIER UN ÉVÉNEMENT SOCIAL (haut niveau) ━━━
 export async function notifySocialEvent(targetUserId, actorNom, type) {
   try {
+    const enabled = await isNotificationsEnabled(targetUserId);
+    if (!enabled) {
+      console.log('🔕 Notifications désactivées pour', targetUserId);
+      return;
+    }
+
     const tokens = await getUserTokens(targetUserId);
     if (!tokens.length) return;
 
@@ -94,7 +115,7 @@ export async function notifySocialEvent(targetUserId, actorNom, type) {
   }
 }
 
-// ━━━ 5. ENVOYER L'HOROSCOPE QUOTIDIEN ━━━
+// ━━━ 6. ENVOYER L'HOROSCOPE QUOTIDIEN ━━━
 export async function sendDailyHoroscope(tokens, message) {
   if (!tokens?.length) return;
   try {
@@ -104,9 +125,15 @@ export async function sendDailyHoroscope(tokens, message) {
   }
 }
 
-// ━━━ 6. ENVOYER NOTIFICATION SOCIALE SIMPLE (wrapper bas niveau) ━━━
+// ━━━ 7. ENVOYER NOTIFICATION SOCIALE SIMPLE (wrapper bas niveau) ━━━
 export const sendSocialNotification = async (userId, title, body) => {
   try {
+    const enabled = await isNotificationsEnabled(userId);
+    if (!enabled) {
+      console.log('🔕 Notifications désactivées pour', userId);
+      return;
+    }
+
     const tokens = await getUserTokens(userId);
     if (!tokens.length) return;
 

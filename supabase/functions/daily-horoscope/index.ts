@@ -98,6 +98,7 @@ serve(async (req) => {
     let sent = 0;
     let failed = 0;
     let fallbackSent = 0;
+    let skippedOptOut = 0;
     const invalidTokens: string[] = [];
 
     // ÉTAPE 1 : Tokens
@@ -110,11 +111,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ sent: 0, reason: "no tokens" }), { status: 200 });
     }
 
-    // ÉTAPE 2 : Profiles
+    // ÉTAPE 2 : Profiles (avec notifications_enabled)
     const userIds = [...new Set(tokens.map(t => t.user_id))];
     const { data: profiles, error: errProfiles } = await supabase
       .from("profiles")
-      .select("id, nom, signe_solaire")
+      .select("id, nom, signe_solaire, notifications_enabled")
       .in("id", userIds);
 
     if (errProfiles) throw errProfiles;
@@ -131,19 +132,30 @@ serve(async (req) => {
     const messageMap = new Map();
     for (const m of (messages || [])) messageMap.set(m.user_id, m);
 
-    // ÉTAPE 4 : Sépare et envoie
+    // ÉTAPE 4 : Sépare et envoie (avec filtre opt-out)
     const withMessage: any[] = [];
     const withoutMessage: any[] = [];
+    const optedOut: any[] = [];
 
     for (const t of tokens) {
-      const msg = messageMap.get(t.user_id);
       const profile = profileMap.get(t.user_id);
+      
+      // ─── CHECK OPT-OUT ───
+      if (profile?.notifications_enabled === false) {
+        optedOut.push(t);
+        continue;
+      }
+      
+      const msg = messageMap.get(t.user_id);
       if (msg) {
         withMessage.push({ ...t, profile, daily_message: msg });
       } else {
         withoutMessage.push({ ...t, profile });
       }
     }
+
+    skippedOptOut = optedOut.length;
+    console.log(`[daily-horoscope] ${skippedOptOut} users opted out`);
 
     // Envoie personnalisés
     for (const row of withMessage) {
@@ -217,7 +229,15 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, sent, fallbackSent, failed, total: tokens.length, cleaned: invalidTokens.length }),
+      JSON.stringify({ 
+        success: true, 
+        sent, 
+        fallbackSent, 
+        failed, 
+        skippedOptOut,
+        total: tokens.length, 
+        cleaned: invalidTokens.length 
+      }),
       { status: 200 }
     );
 
