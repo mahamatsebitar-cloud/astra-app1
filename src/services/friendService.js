@@ -103,7 +103,7 @@ export const sendFriendRequest = async (senderId, receiverId) => {
       metadata: {}
     });
 
-    // ─── NOTIFICATION SOCIALE ───
+    // ─── NOTIFICATION SOCIALE AVEC DEEP LINK ───
     const { data: senderProfile } = await supabase
       .from('profiles')
       .select('nom')
@@ -146,7 +146,7 @@ export const acceptFriendRequest = async (friendshipId, userId) => {
       metadata: {}
     });
 
-    // ─── NOTIFICATION SOCIALE ───
+    // ─── NOTIFICATION SOCIALE AVEC DEEP LINK ───
     const { data: acceptorProfile } = await supabase
       .from('profiles')
       .select('nom')
@@ -261,7 +261,7 @@ export const logCompatibilityView = async (viewerId, viewedId) => {
       metadata: {}
     });
 
-    // ─── NOTIFICATION SOCIALE ───
+    // ─── NOTIFICATION SOCIALE AVEC DEEP LINK ───
     const { data: viewerProfile } = await supabase
       .from('profiles')
       .select('nom')
@@ -269,7 +269,7 @@ export const logCompatibilityView = async (viewerId, viewedId) => {
       .single();
 
     const prenomViewer = viewerProfile?.nom?.split(' ')[0] || 'Quelqu\'un';
-    await notifySocialEvent(viewedId, prenomViewer, 'compatibilite_vue');
+    await notifySocialEvent(viewedId, prenomViewer, 'compatibilite_vue', { friendId: viewerId });
   } catch (err) {
     console.warn('logCompatibilityView:', err);
   }

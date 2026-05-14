@@ -78,7 +78,7 @@ export async function sendPushNotification(tokens, title, body, data = {}) {
 }
 
 // ━━━ 5. NOTIFIER UN ÉVÉNEMENT SOCIAL (haut niveau) ━━━
-export async function notifySocialEvent(targetUserId, actorNom, type) {
+export async function notifySocialEvent(targetUserId, actorNom, type, extraData = {}) {
   try {
     const enabled = await isNotificationsEnabled(targetUserId);
     if (!enabled) {
@@ -92,24 +92,39 @@ export async function notifySocialEvent(targetUserId, actorNom, type) {
     const messages = {
       'ami_demande': {
         title: '✦ Nouvelle alliance',
-        body: `${actorNom} veut rejoindre ton cercle astral`
+        body: `${actorNom} veut rejoindre ton cercle astral`,
+        screen: 'pending',
+        notificationType: 'ami_demande'
       },
       'ami_accepte': {
         title: '✦ Alliance acceptée',
-        body: `${actorNom} a rejoint ton cercle — explorez votre affinité`
+        body: `${actorNom} a rejoint ton cercle — explorez votre affinité`,
+        screen: 'compat',
+        notificationType: 'ami_accepte'
       },
       'compatibilite_vue': {
         title: '✦ Affinité explorée',
-        body: `${actorNom} a exploré votre compatibilité astrale`
+        body: `${actorNom} a exploré votre compatibilité astrale`,
+        screen: 'compat',
+        notificationType: 'compatibilite_vue'
       }
     };
 
     const config = messages[type] || {
       title: 'Astra ✦',
-      body: `${actorNom} interagit avec votre profil`
+      body: `${actorNom} interagit avec votre profil`,
+      screen: 'home',
+      notificationType: 'social'
     };
 
-    await sendPushNotification(tokens, config.title, config.body, { type });
+    // ─── DATA FCM AVEC DEEP LINK ───
+    const fcmData = {
+      type: config.notificationType,
+      screen: config.screen,
+      ...extraData
+    };
+
+    await sendPushNotification(tokens, config.title, config.body, fcmData);
   } catch (err) {
     console.warn('notifySocialEvent error:', err);
   }
@@ -119,14 +134,17 @@ export async function notifySocialEvent(targetUserId, actorNom, type) {
 export async function sendDailyHoroscope(tokens, message) {
   if (!tokens?.length) return;
   try {
-    await sendPushNotification(tokens, 'Votre horoscope du jour ✦', message, { type: 'daily' });
+    await sendPushNotification(tokens, 'Votre horoscope du jour ✦', message, {
+      type: 'daily',
+      screen: 'home'
+    });
   } catch (err) {
     console.warn('sendDailyHoroscope error:', err);
   }
 }
 
-// ━━━ 7. ENVOYER NOTIFICATION SOCIALE SIMPLE (wrapper bas niveau) ━━━
-export const sendSocialNotification = async (userId, title, body) => {
+// ━━━ 7. ENVOYER NOTIFICATION SOCIALE SIMPLE ━━━
+export const sendSocialNotification = async (userId, title, body, extraData = {}) => {
   try {
     const enabled = await isNotificationsEnabled(userId);
     if (!enabled) {
@@ -145,7 +163,12 @@ export const sendSocialNotification = async (userId, title, body) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
         },
-        body: JSON.stringify({ user_id: userId, title, body })
+        body: JSON.stringify({
+          user_id: userId,
+          title,
+          body,
+          data: { screen: 'home', ...extraData }
+        })
       }
     );
 

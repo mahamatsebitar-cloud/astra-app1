@@ -1,5 +1,19 @@
+// src/lib/notifications.js
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
+
+// ─── STORE GLOBAL POUR LE DEEP LINK ───
+let pendingDeepLink = null;
+
+export function getPendingDeepLink() {
+  const link = pendingDeepLink;
+  pendingDeepLink = null; // Consume
+  return link;
+}
+
+export function hasPendingDeepLink() {
+  return pendingDeepLink !== null;
+}
 
 export async function initPushNotifications() {
   if (!Capacitor.isNativePlatform()) {
@@ -7,14 +21,14 @@ export async function initPushNotifications() {
     return;
   }
 
-  // 🔴 ÉTAPE CRUCIALE : Crée le canal de notification AVANT tout
+  // Crée le canal de notification
   try {
     await PushNotifications.createChannel({
       id: 'astra_default',
       name: 'Notifications Astra',
       description: 'Notifications quotidiennes de l\'app Astra',
-      importance: 5, // HIGH = affiche en pop-up, son, vibration
-      visibility: 1,  // PUBLIC = visible sur écran verrouillé
+      importance: 5,
+      visibility: 1,
       sound: 'default',
       vibration: true,
       lights: true
@@ -24,11 +38,10 @@ export async function initPushNotifications() {
     console.error('❌ Erreur création canal:', err);
   }
 
-  // 🔴 ÉTAPE 3 : Écoute les notifications reçues quand l'app est ouverte
+  // Écoute les notifications reçues quand l'app est ouverte
   PushNotifications.addListener('pushNotificationReceived', (notification) => {
     console.log('🔔 Notification reçue (app ouverte):', notification);
     
-    // Émet l'événement pour le toast
     window.dispatchEvent(new CustomEvent('astra-notification', {
       detail: {
         title: notification.title || '✦ Astra',
@@ -38,9 +51,29 @@ export async function initPushNotifications() {
     }));
   });
 
-  // Écoute les clics sur notification
+  // ─── ÉCOUTE LES CLICS SUR NOTIFICATION (DEEP LINK) ───
   PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
     console.log('👆 Notification cliquée:', notification);
+    
+    const data = notification.notification?.data || notification.data || {};
+    console.log('📊 Deep link data:', data);
+    
+    // Stocke le deep link pour que App.jsx le consomme
+    if (data.screen) {
+      pendingDeepLink = {
+        screen: data.screen,
+        type: data.type || '',
+        friendId: data.friendId || null,
+        planete: data.planete || '',
+        signe: data.signe || '',
+        maison: data.maison || ''
+      };
+      
+      // Émet aussi un événement si l'app est déjà ouverte
+      window.dispatchEvent(new CustomEvent('astra-deep-link', {
+        detail: pendingDeepLink
+      }));
+    }
   });
 
   // Vérifie/demande la permission
@@ -57,7 +90,6 @@ export async function initPushNotifications() {
     return null;
   }
 
-  // Enregistre le device
   await PushNotifications.register();
   console.log('🔔 register() called');
 }
@@ -69,7 +101,6 @@ export function getFCMToken() {
       return;
     }
 
-    // Timeout de sécurité 10 secondes
     const timeout = setTimeout(() => {
       console.log('❌ Token timeout');
       resolve(null);
@@ -87,7 +118,6 @@ export function getFCMToken() {
       resolve(null);
     });
 
-    // Déclenche l'enregistrement
     PushNotifications.register();
   });
 }

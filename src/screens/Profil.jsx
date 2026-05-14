@@ -51,16 +51,34 @@ const Profil = ({ onLogout, onNavigate }) => {
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [isTogglingNotif, setIsTogglingNotif] = useState(false);
 
+  // ─── TOUS LES useEffect ICI ───
   useEffect(() => {
     if (profile?.notifications_enabled !== undefined && profile?.notifications_enabled !== null) {
       setNotifEnabled(profile.notifications_enabled);
     }
   }, [profile?.notifications_enabled]);
 
+  // ─── TOUS LES useMemo ICI ───
   const displayNom = useMemo(() => profile?.nom || user?.user_metadata?.nom || "Voyageur", [profile, user]);
   const signeSolaire = useMemo(() => profile?.signe_solaire || "Bélier", [profile]);
   const titreProfil = useMemo(() => getTitreProfil(signeSolaire, displayNom), [signeSolaire, displayNom]);
 
+  const subscriptionInfo = useMemo(() => ({
+    label: isActive ? planLabel : isTrial ? `Essai · ${daysRemaining}j restants` : 'Découvrir Astra Étoile',
+    badge: isActive ? 'Actif' : isTrial ? 'Essai' : 'Premium',
+    footer: isActive ? 'Renouvellement automatique' : isTrial ? "Profitez de l'accès complet" : 'Accédez à toutes les fonctionnalités'
+  }), [isActive, isTrial, planLabel, daysRemaining]);
+
+  const notifDesc = useMemo(() => {
+    if (!notifEnabled) return 'Notifications désactivées';
+    if (notifStatus === 'granted') return 'Notifications activées';
+    if (notifStatus === 'denied') return 'Permission refusée';
+    if (notifStatus === 'loading') return 'Activation...';
+    if (notifStatus === 'error') return 'Erreur d\'activation';
+    return 'Horoscope & alertes sociales';
+  }, [notifEnabled, notifStatus]);
+
+  // ─── TOUS LES useCallback ICI ───
   const formatDate = useCallback((dateStr) => {
     if (!dateStr) return "Non renseignée";
     try {
@@ -75,12 +93,7 @@ const Profil = ({ onLogout, onNavigate }) => {
     return heureStr.substring(0, 5).replace(':', 'h');
   }, []);
 
-  const subscriptionInfo = useMemo(() => ({
-    label: isActive ? planLabel : isTrial ? `Essai · ${daysRemaining}j restants` : 'Découvrir Astra Étoile',
-    badge: isActive ? 'Actif' : isTrial ? 'Essai' : 'Premium',
-    footer: isActive ? 'Renouvellement automatique' : isTrial ? "Profitez de l'accès complet" : 'Accédez à toutes les fonctionnalités'
-  }), [isActive, isTrial, planLabel, daysRemaining]);
-
+  // ─── FONCTIONS ICI ───
   const handleToggleNotifications = async () => {
     if (!user?.id) return;
     setIsTogglingNotif(true);
@@ -106,12 +119,9 @@ const Profil = ({ onLogout, onNavigate }) => {
   };
 
   const handleEnableNotifications = async () => {
-    console.log('🔔 CLICKED NOTIFICATIONS');
     setNotifStatus('loading');
     try {
       const token = await getFCMToken();
-      console.log('🔔 Token received:', token);
-
       if (!token) {
         setNotifStatus('denied');
         return;
@@ -128,14 +138,11 @@ const Profil = ({ onLogout, onNavigate }) => {
           ignoreDuplicates: false
         });
 
-      console.error('❌ Supabase error:', JSON.stringify(error));
-
       if (error) {
         setNotifStatus('error');
         return;
       }
 
-      console.log('✅ FCM token saved');
       setNotifStatus('granted');
     } catch (err) {
       console.error('❌ Error:', err);
@@ -167,6 +174,7 @@ const Profil = ({ onLogout, onNavigate }) => {
     }
   };
 
+  // ─── RETURNS CONDITIONNELS APRÈS TOUS LES HOOKS ───
   if (legalScreen === 'cgu') return <CGU onBack={() => setLegalScreen(null)} />;
   if (legalScreen === 'confidentialite') return <PolitiqueConfidentialite onBack={() => setLegalScreen(null)} />;
   if (legalScreen === 'mentions') return <MentionsLegales onBack={() => setLegalScreen(null)} />;
@@ -182,15 +190,7 @@ const Profil = ({ onLogout, onNavigate }) => {
     );
   }
 
-  const notifDesc = useMemo(() => {
-    if (!notifEnabled) return 'Notifications désactivées';
-    if (notifStatus === 'granted') return 'Notifications activées';
-    if (notifStatus === 'denied') return 'Permission refusée';
-    if (notifStatus === 'loading') return 'Activation...';
-    if (notifStatus === 'error') return 'Erreur d\'activation';
-    return 'Horoscope & alertes sociales';
-  }, [notifEnabled, notifStatus]);
-
+  // ─── RENDER PRINCIPAL ───
   return (
     <div className="w-full space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-2 duration-700">
       
@@ -284,6 +284,7 @@ const Profil = ({ onLogout, onNavigate }) => {
           <h4 className="text-muted text-[9px] tracking-[4px] uppercase ml-1 opacity-40 font-bold">Configuration</h4>
           <div className="bg-card/40 border border-white/5 rounded-2xl overflow-hidden shadow-lg">
             
+            {/* ─── TOGGLE NOTIFICATIONS OR PLEIN ─── */}
             <div 
               onClick={!isTogglingNotif ? handleToggleNotifications : undefined}
               className={`flex items-center gap-4 p-4 hover:bg-white/[0.03] transition-colors cursor-pointer border-b border-white/[0.03] ${isTogglingNotif ? 'opacity-60' : ''}`}
@@ -295,7 +296,8 @@ const Profil = ({ onLogout, onNavigate }) => {
                 <p className="text-cream text-sm font-medium">Notifications</p>
                 <p className="text-muted text-[10px]">{notifDesc}</p>
               </div>
-              <div className={`w-11 h-6 rounded-full relative transition-colors duration-300 ${notifEnabled ? 'bg-gold/40' : 'bg-white/10'}`}>
+              {/* ─── TOGGLE SWITCH OR PLEIN ─── */}
+              <div className={`w-11 h-6 rounded-full relative transition-colors duration-300 ${notifEnabled ? 'bg-gold' : 'bg-white/10'}`}>
                 <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-cream shadow-md transition-transform duration-300 ${notifEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </div>
             </div>

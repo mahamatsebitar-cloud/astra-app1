@@ -37,7 +37,7 @@ const getTexteActivite = (activity) => {
   }
 };
 
-const Compatibilite = ({ onUpgrade }) => {
+const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
   const { user } = useAuthContext();
   const { profile } = useProfile(user?.id);
   const {
@@ -64,6 +64,36 @@ const Compatibilite = ({ onUpgrade }) => {
   const [animBars, setAnimBars] = useState(false);
   const [invitationStatus, setInvitationStatus] = useState(null);
   const scrollRef = useRef(null);
+
+  // ─── GESTION DU DEEP LINK ───
+  useEffect(() => {
+    if (!deepLinkTarget) return;
+
+    console.log('🔗 Compatibilite deep link:', deepLinkTarget);
+
+    if (deepLinkTarget.type === 'pending') {
+      // Affiche les demandes en attente (scroll vers elles)
+      setShowSearch(false);
+      setVue('liste');
+      // Scroll vers les demandes après le render
+      setTimeout(() => {
+        const pendingSection = document.querySelector('[data-pending-section]');
+        if (pendingSection) {
+          pendingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300);
+    } else if (deepLinkTarget.type === 'friend' && deepLinkTarget.id) {
+      // Trouve l'ami et ouvre son profil
+      const friend = friends.find(f => f.ami?.id === deepLinkTarget.id);
+      if (friend) {
+        setAmiSelectionne(friend);
+        setVue('profil');
+      }
+    }
+
+    // Consume le deep link
+    onDeepLinkConsumed?.();
+  }, [deepLinkTarget, friends, onDeepLinkConsumed]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTo(0, 0);
@@ -304,8 +334,9 @@ const Compatibilite = ({ onUpgrade }) => {
         </div>
       )}
 
+      {/* ─── DEMANDES EN ATTENTE AVEC DATA ATTR POUR DEEP LINK ─── */}
       {pendingRequests.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-4" data-pending-section>
           <p className="text-[10px] text-gold tracking-[0.2em] uppercase font-bold ml-1">Appels des astres</p>
           <div className="grid gap-3">
             {pendingRequests.map((req) => (

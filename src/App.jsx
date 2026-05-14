@@ -7,8 +7,8 @@ import { ProfileProvider } from './context/ProfileContext';
 import { useProfile } from './hooks/useProfile';
 import ConsentBanner from './components/ui/ConsentBanner';
 import { findUserByShareToken, sendFriendRequest } from './services/friendService';
-import { initPushNotifications } from './lib/notifications';
-import { NotificationToast } from './components/NotificationToast'; // 🔴 ÉTAPE 4 : Import du Toast
+import { initPushNotifications, getPendingDeepLink } from './lib/notifications';
+import { NotificationToast } from './components/NotificationToast';
 
 // Screens
 import Splash from './screens/Splash';
@@ -43,6 +43,9 @@ const AppContent = () => {
     ville: 'Paris, France'
   });
   
+  // ─── DEEP LINK STATE ───
+  const [deepLinkTarget, setDeepLinkTarget] = useState(null);
+  
   const scrollRef = useRef(null);
 
   // ━━━ GESTION LIEN DE PARTAGE /invite/TOKEN ━━━
@@ -69,12 +72,68 @@ const AppContent = () => {
     if (isAuthenticated) processInvite();
   }, [isAuthenticated, user?.id]);
 
-  // ━━━ INIT PUSH NOTIFICATIONS (après authentification) ━━━
+  // ━━━ INIT PUSH NOTIFICATIONS ━━━
   useEffect(() => {
     if (isAuthenticated && Capacitor.isNativePlatform()) {
       initPushNotifications();
     }
   }, [isAuthenticated]);
+
+  // ─── ÉCOUTE LE DEEP LINK (app déjà ouverte) ───
+  useEffect(() => {
+    const handleDeepLink = (event) => {
+      const data = event.detail;
+      console.log('🔗 Deep link reçu (app ouverte):', data);
+      processDeepLink(data);
+    };
+    
+    window.addEventListener('astra-deep-link', handleDeepLink);
+    return () => window.removeEventListener('astra-deep-link', handleDeepLink);
+  }, []);
+
+  // ─── CHECK DEEP LINK AU CHARGEMENT (app fermée → clique notif) ───
+  useEffect(() => {
+    if (!authLoading && !profileLoading && isAuthenticated) {
+      const link = getPendingDeepLink();
+      if (link) {
+        console.log('🔗 Deep link en attente:', link);
+        processDeepLink(link);
+      }
+    }
+  }, [authLoading, profileLoading, isAuthenticated]);
+
+  // ─── FONCTION DE TRAITEMENT DU DEEP LINK ───
+  const processDeepLink = (data) => {
+    if (!data || !data.screen) return;
+    
+    switch (data.screen) {
+      case 'home':
+        setCurrentScreen('home');
+        setActiveTab('home');
+        break;
+      case 'compat':
+        setCurrentScreen('compat');
+        setActiveTab('compat');
+        // Si friendId présent, on le stocke pour Compatibilite
+        if (data.friendId) {
+          setDeepLinkTarget({ type: 'friend', id: data.friendId });
+        }
+        break;
+      case 'pending':
+        setCurrentScreen('compat');
+        setActiveTab('compat');
+        // Indique à Compatibilite d'afficher les demandes en attente
+        setDeepLinkTarget({ type: 'pending' });
+        break;
+      case 'profil':
+        setCurrentScreen('profil');
+        setActiveTab('profil');
+        break;
+      default:
+        setCurrentScreen('home');
+        setActiveTab('home');
+    }
+  };
 
   // Scroll Reset à chaque changement d'écran
   useEffect(() => {
@@ -135,6 +194,8 @@ const AppContent = () => {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setCurrentScreen(tab);
+    // Reset le deep link quand on navigue manuellement
+    setDeepLinkTarget(null);
   };
 
   const handleNavigateToAbonnement = (fromScreen) => {
@@ -180,7 +241,13 @@ const AppContent = () => {
       case 'horoscope':
         return <Horoscope onBack={() => handleTabChange('home')} onUpgrade={() => handleNavigateToAbonnement('horoscope')} />;
       case 'compat':
-        return <Compatibilite onUpgrade={() => handleNavigateToAbonnement('compat')} />;
+        return (
+          <Compatibilite 
+            onUpgrade={() => handleNavigateToAbonnement('compat')} 
+            deepLinkTarget={deepLinkTarget}
+            onDeepLinkConsumed={() => setDeepLinkTarget(null)}
+          />
+        );
       case 'profil':
         return <Profil onLogout={() => setCurrentScreen('splash')} onNavigate={(screen) => screen === 'abonnement' && handleNavigateToAbonnement('profil')} />;
       case 'abonnement':
@@ -192,7 +259,6 @@ const AppContent = () => {
 
   return (
     <div className="h-screen w-screen bg-night flex flex-col overflow-hidden">
-      {/* 🔴 ÉTAPE 4 : Toast de notification */}
       <NotificationToast />
       
       <div className="flex-1 overflow-hidden relative">
