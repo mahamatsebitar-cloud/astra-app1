@@ -1,18 +1,20 @@
 // src/lib/notifications.js
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
+import { Toast } from '@capacitor/toast';
 
-// ─── STORE GLOBAL POUR LE DEEP LINK ───
-let pendingDeepLink = null;
-
+// ─── PERSISTENCE VIA LOCALSTORAGE (survit à l'app fermée) ───
 export function getPendingDeepLink() {
-  const link = pendingDeepLink;
-  pendingDeepLink = null; // Consume
-  return link;
+  const link = localStorage.getItem('astra_pending_deep_link');
+  if (link) {
+    localStorage.removeItem('astra_pending_deep_link');
+    return JSON.parse(link);
+  }
+  return null;
 }
 
 export function hasPendingDeepLink() {
-  return pendingDeepLink !== null;
+  return !!localStorage.getItem('astra_pending_deep_link');
 }
 
 export async function initPushNotifications() {
@@ -33,14 +35,16 @@ export async function initPushNotifications() {
       vibration: true,
       lights: true
     });
-    console.log('✅ Canal astra_default créé');
+    await Toast.show({ text: '✅ Canal notif créé' });
   } catch (err) {
-    console.error('❌ Erreur création canal:', err);
+    await Toast.show({ text: '❌ Erreur canal: ' + err.message });
   }
 
-  // Écoute les notifications reçues quand l'app est ouverte
-  PushNotifications.addListener('pushNotificationReceived', (notification) => {
-    console.log('🔔 Notification reçue (app ouverte):', notification);
+  // Écoute les notifications reçues (app ouverte)
+  PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+    await Toast.show({ 
+      text: '🔔 Notif reçue: ' + (notification.title || 'Astra').substring(0, 30) 
+    });
     
     window.dispatchEvent(new CustomEvent('astra-notification', {
       detail: {
@@ -52,15 +56,14 @@ export async function initPushNotifications() {
   });
 
   // ─── ÉCOUTE LES CLICS SUR NOTIFICATION (DEEP LINK) ───
-  PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-    console.log('👆 Notification cliquée:', notification);
+  PushNotifications.addListener('pushNotificationActionPerformed', async (notification) => {
+    await Toast.show({ text: '👆 CLIC NOTIF DÉTECTÉ !' });
     
     const data = notification.notification?.data || notification.data || {};
-    console.log('📊 Deep link data:', data);
+    await Toast.show({ text: 'Data: ' + JSON.stringify(data).substring(0, 40) });
     
-    // Stocke le deep link pour que App.jsx le consomme
     if (data.screen) {
-      pendingDeepLink = {
+      const deepLink = {
         screen: data.screen,
         type: data.type || '',
         friendId: data.friendId || null,
@@ -69,29 +72,32 @@ export async function initPushNotifications() {
         maison: data.maison || ''
       };
       
-      // Émet aussi un événement si l'app est déjà ouverte
+      // Stocke dans localStorage pour persistance
+      localStorage.setItem('astra_pending_deep_link', JSON.stringify(deepLink));
+      await Toast.show({ text: '💾 Stocké: ' + data.screen });
+      
+      // Émet aussi un événement si app ouverte
       window.dispatchEvent(new CustomEvent('astra-deep-link', {
-        detail: pendingDeepLink
+        detail: deepLink
       }));
+    } else {
+      await Toast.show({ text: '❌ Pas de data.screen' });
     }
   });
 
   // Vérifie/demande la permission
   let permission = await PushNotifications.checkPermissions();
-  console.log('🔔 Current permission:', permission.receive);
-
   if (permission.receive === 'prompt') {
     permission = await PushNotifications.requestPermissions();
-    console.log('🔔 After request:', permission.receive);
   }
 
   if (permission.receive !== 'granted') {
-    console.log('❌ Permission denied');
+    await Toast.show({ text: '❌ Permission refusée' });
     return null;
   }
 
   await PushNotifications.register();
-  console.log('🔔 register() called');
+  await Toast.show({ text: '🔔 Push enregistré' });
 }
 
 export function getFCMToken() {
@@ -102,19 +108,16 @@ export function getFCMToken() {
     }
 
     const timeout = setTimeout(() => {
-      console.log('❌ Token timeout');
       resolve(null);
     }, 10000);
 
     PushNotifications.addListener('registration', (token) => {
       clearTimeout(timeout);
-      console.log('✅ FCM Token:', token.value);
       resolve(token.value);
     });
 
     PushNotifications.addListener('registrationError', (err) => {
       clearTimeout(timeout);
-      console.error('❌ Registration error:', JSON.stringify(err));
       resolve(null);
     });
 

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Capacitor } from '@capacitor/core';
+import { Toast } from '@capacitor/toast';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { useProfile } from './hooks/useProfile';
@@ -81,9 +82,9 @@ const AppContent = () => {
 
   // ─── ÉCOUTE LE DEEP LINK (app déjà ouverte) ───
   useEffect(() => {
-    const handleDeepLink = (event) => {
+    const handleDeepLink = async (event) => {
       const data = event.detail;
-      console.log('🔗 Deep link reçu (app ouverte):', data);
+      await Toast.show({ text: '🔗 Deep link event: ' + data.screen });
       processDeepLink(data);
     };
     
@@ -93,18 +94,24 @@ const AppContent = () => {
 
   // ─── CHECK DEEP LINK AU CHARGEMENT (app fermée → clique notif) ───
   useEffect(() => {
-    if (!authLoading && !profileLoading && isAuthenticated) {
-      const link = getPendingDeepLink();
-      if (link) {
-        console.log('🔗 Deep link en attente:', link);
-        processDeepLink(link);
-      }
-    }
-  }, [authLoading, profileLoading, isAuthenticated]);
+    if (authLoading || profileLoading || !isAuthenticated) return;
+    if (currentScreen === 'loading' || currentScreen === 'splash') return;
+    
+    const link = getPendingDeepLink();
+    if (!link) return;
+    
+    Toast.show({ text: '🎯 Deep link trouvé: ' + link.screen });
+    processDeepLink(link);
+  }, [authLoading, profileLoading, isAuthenticated, currentScreen]);
 
   // ─── FONCTION DE TRAITEMENT DU DEEP LINK ───
-  const processDeepLink = (data) => {
-    if (!data || !data.screen) return;
+  const processDeepLink = async (data) => {
+    if (!data || !data.screen) {
+      await Toast.show({ text: '❌ Pas de screen dans deep link' });
+      return;
+    }
+    
+    await Toast.show({ text: '🚀 Navigation vers: ' + data.screen });
     
     switch (data.screen) {
       case 'home':
@@ -114,7 +121,6 @@ const AppContent = () => {
       case 'compat':
         setCurrentScreen('compat');
         setActiveTab('compat');
-        // Si friendId présent, on le stocke pour Compatibilite
         if (data.friendId) {
           setDeepLinkTarget({ type: 'friend', id: data.friendId });
         }
@@ -122,7 +128,6 @@ const AppContent = () => {
       case 'pending':
         setCurrentScreen('compat');
         setActiveTab('compat');
-        // Indique à Compatibilite d'afficher les demandes en attente
         setDeepLinkTarget({ type: 'pending' });
         break;
       case 'profil':
@@ -130,6 +135,7 @@ const AppContent = () => {
         setActiveTab('profil');
         break;
       default:
+        await Toast.show({ text: '❓ Screen inconnu: ' + data.screen });
         setCurrentScreen('home');
         setActiveTab('home');
     }
@@ -194,7 +200,6 @@ const AppContent = () => {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setCurrentScreen(tab);
-    // Reset le deep link quand on navigue manuellement
     setDeepLinkTarget(null);
   };
 
