@@ -1,3 +1,4 @@
+// supabase/functions/send-notification/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -53,7 +54,7 @@ async function getAccessToken(serviceAccount: any): Promise<string> {
 
 serve(async (req) => {
   try {
-    const { user_id, title, body } = await req.json();
+    const { user_id, title, body, data } = await req.json();
     if (!user_id) return new Response(JSON.stringify({ error: "Missing user_id" }), { status: 400 });
 
     const serviceAccount = JSON.parse(Deno.env.get("FIREBASE_SERVICE_ACCOUNT")!);
@@ -75,8 +76,28 @@ serve(async (req) => {
     console.log("Tokens found:", rows.length);
     const accessToken = await getAccessToken(serviceAccount);
 
+    const invalidTokens: string[] = [];
+
     const results = await Promise.all(
       rows.map(async (row: { token: string }) => {
+        // ─── CONSTRUIT LE PAYLOAD AVEC DATA ───
+        const messagePayload: any = {
+          token: row.token,
+          notification: { title, body },
+          android: {
+            priority: "high",
+            notification: {
+              sound: "default",
+              channel_id: "astra_default"
+            }
+          }
+        };
+
+        // Ajoute les data si présentes
+        if (data && Object.keys(data).length > 0) {
+          messagePayload.data = data;
+        }
+
         const res = await fetch(
           `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`,
           {
@@ -85,32 +106,32 @@ serve(async (req) => {
               "Authorization": `Bearer ${accessToken}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              message: {
-                token: row.token,
-                notification: { title, body },
-                android: {
-                  priority: "high",
-                  notification: {
-                    sound: "default",
-                    channel_id: "astra_default"
-                  }
-                }
-              },
-            }),
+            body: JSON.stringify({ message: messagePayload }),
           }
         );
         const result = await res.json();
         console.log("FCM result:", JSON.stringify(result));
+
+        // ─── TRACK LES TOKENS INVALIDES ───
+        if (result.error?.code === 'UNREGISTERED' || result.error?.code === 'INVALID_ARGUMENT') {
+          invalidTokens.push(row.token);
+        }
+
         return result;
       })
     );
+
+    // ─── NETTOIE LES TOKENS INVALIDES ───
+    if (invalidTokens.length > 0) {
+      await supabase.from("notification_tokens").delete().in("token", invalidTokens);
+      console.log("Cleaned invalid tokens:", invalidTokens.length);
+    }
 
     const sent   = results.filter((r: any) => r.name).length;
     const failed = results.filter((r: any) => r.error).length;
 
     return new Response(
-      JSON.stringify({ success: sent > 0, sent, failed, results }),
+      JSON.stringify({ success: sent > 0, sent, failed, cleaned: invalidTokens.length, results }),
       { status: 200 }
     );
 
@@ -119,4 +140,3 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 });
-//git opp

@@ -1,8 +1,7 @@
 // src/App.jsx
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Capacitor } from '@capacitor/core';
-import { Toast } from '@capacitor/toast';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { useProfile } from './hooks/useProfile';
@@ -31,6 +30,13 @@ const PUBLIC_SCREENS = ['splash', 'login', 'onb1', 'onb2', 'onb3', 'loading_them
 const ONBOARDING_SCREENS = ['onb1', 'onb2', 'onb3', 'loading_theme', 'onbInvit'];
 const PROTECTED_SCREENS = ['home', 'natal', 'horoscope', 'compat', 'profil', 'noeud_lunaire', 'abonnement'];
 
+// ─── ORDRE DES TABS POUR DIRECTION SLIDE ───
+const TAB_ORDER = ['home', 'natal', 'compat', 'profil'];
+const TAB_SCREENS = ['home', 'natal', 'horoscope', 'compat', 'profil', 'noeud_lunaire'];
+
+// ─── SCREENS QUI SONT DES "PUSH" (stack) ───
+const STACK_SCREENS = ['horoscope', 'noeud_lunaire', 'abonnement'];
+
 const AppContent = () => {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const { profile, loading: profileLoading } = useProfile(user?.id);
@@ -38,6 +44,7 @@ const AppContent = () => {
   const [currentScreen, setCurrentScreen] = useState('splash');
   const [activeTab, setActiveTab] = useState('home');
   const [previousScreen, setPreviousScreen] = useState('home');
+  const [previousTab, setPreviousTab] = useState('home');
   const [onboardingData, setOnboardingData] = useState({
     dateNaissance: '',
     heure: '12:00',
@@ -82,9 +89,9 @@ const AppContent = () => {
 
   // ─── ÉCOUTE LE DEEP LINK (app déjà ouverte) ───
   useEffect(() => {
-    const handleDeepLink = async (event) => {
+    const handleDeepLink = (event) => {
       const data = event.detail;
-      await Toast.show({ text: '🔗 Deep link event: ' + data.screen });
+      console.log('🔗 Deep link event:', data);
       processDeepLink(data);
     };
     
@@ -100,18 +107,18 @@ const AppContent = () => {
     const link = getPendingDeepLink();
     if (!link) return;
     
-    Toast.show({ text: '🎯 Deep link trouvé: ' + link.screen });
+    console.log('🎯 Deep link trouvé:', link);
     processDeepLink(link);
   }, [authLoading, profileLoading, isAuthenticated, currentScreen]);
 
   // ─── FONCTION DE TRAITEMENT DU DEEP LINK ───
-  const processDeepLink = async (data) => {
+  const processDeepLink = (data) => {
     if (!data || !data.screen) {
-      await Toast.show({ text: '❌ Pas de screen dans deep link' });
+      console.log('❌ Pas de screen dans deep link');
       return;
     }
     
-    await Toast.show({ text: '🚀 Navigation vers: ' + data.screen });
+    console.log('🚀 Navigation vers:', data.screen);
     
     switch (data.screen) {
       case 'home':
@@ -135,7 +142,7 @@ const AppContent = () => {
         setActiveTab('profil');
         break;
       default:
-        await Toast.show({ text: '❓ Screen inconnu: ' + data.screen });
+        console.log('❓ Screen inconnu:', data.screen);
         setCurrentScreen('home');
         setActiveTab('home');
     }
@@ -197,7 +204,25 @@ const AppContent = () => {
     return ['home', 'natal', 'horoscope', 'compat', 'profil', 'noeud_lunaire'].includes(currentScreen);
   }, [currentScreen]);
 
+  // ─── DÉTERMINE LA DIRECTION DU SLIDE POUR LES TABS ───
+  const getSlideDirection = useCallback(() => {
+    // Si c'est un stack screen (push), on fait un slide vertical
+    if (STACK_SCREENS.includes(currentScreen)) {
+      return { x: 0, y: 100 }; // Monte du bas
+    }
+    
+    // Si c'est un tab screen, slide horizontal
+    const currentIndex = TAB_ORDER.indexOf(currentScreen);
+    const prevIndex = TAB_ORDER.indexOf(previousTab);
+    
+    if (currentIndex === -1 || prevIndex === -1) return { x: 0, y: 0 };
+    
+    // Direction : droite (x: 100) ou gauche (x: -100)
+    return currentIndex > prevIndex ? { x: 300, y: 0 } : { x: -300, y: 0 };
+  }, [currentScreen, previousTab]);
+
   const handleTabChange = (tab) => {
+    setPreviousTab(activeTab);
     setActiveTab(tab);
     setCurrentScreen(tab);
     setDeepLinkTarget(null);
@@ -206,6 +231,17 @@ const AppContent = () => {
   const handleNavigateToAbonnement = (fromScreen) => {
     setPreviousScreen(fromScreen || currentScreen);
     setCurrentScreen('abonnement');
+  };
+
+  // ─── NAVIGATION VERS STACK SCREEN (push) ───
+  const handlePushScreen = (screen) => {
+    setPreviousScreen(currentScreen);
+    setCurrentScreen(screen);
+  };
+
+  // ─── RETOUR DU STACK ───
+  const handlePopScreen = () => {
+    setCurrentScreen(previousScreen);
   };
 
   if (authLoading || profileLoading) {
@@ -238,48 +274,86 @@ const AppContent = () => {
       case 'onbInvit':
         return <OnboardingInvit onFinish={() => { setCurrentScreen('home'); setActiveTab('home'); }} userNom={profile?.nom || "Voyageur"} signeSolaire={profile?.signe_solaire || "Lion"} />;
       case 'home':
-        return <Home onHoroscope={() => handleTabChange('horoscope')} onProfil={() => handleTabChange('profil')} />;
+        return <Home onHoroscope={() => handlePushScreen('horoscope')} onProfil={() => handleTabChange('profil')} />;
       case 'natal':
-        return <NatalChart onSeeNoeuds={() => setCurrentScreen('noeud_lunaire')} onUpgrade={() => handleNavigateToAbonnement('natal')} />;
+        return <NatalChart onSeeNoeuds={() => handlePushScreen('noeud_lunaire')} onUpgrade={() => handlePushScreen('abonnement')} />;
       case 'noeud_lunaire':
-        return <NoeudLunaire onBack={() => setCurrentScreen('natal')} onUpgrade={() => handleNavigateToAbonnement('noeud_lunaire')} />;
+        return <NoeudLunaire onBack={handlePopScreen} onUpgrade={() => handlePushScreen('abonnement')} />;
       case 'horoscope':
-        return <Horoscope onBack={() => handleTabChange('home')} onUpgrade={() => handleNavigateToAbonnement('horoscope')} />;
+        return <Horoscope onBack={handlePopScreen} onUpgrade={() => handlePushScreen('abonnement')} />;
       case 'compat':
         return (
           <Compatibilite 
-            onUpgrade={() => handleNavigateToAbonnement('compat')} 
+            onUpgrade={() => handlePushScreen('abonnement')} 
             deepLinkTarget={deepLinkTarget}
             onDeepLinkConsumed={() => setDeepLinkTarget(null)}
           />
         );
       case 'profil':
-        return <Profil onLogout={() => setCurrentScreen('splash')} onNavigate={(screen) => screen === 'abonnement' && handleNavigateToAbonnement('profil')} />;
+        return <Profil onLogout={() => setCurrentScreen('splash')} onNavigate={(screen) => screen === 'abonnement' && handlePushScreen('abonnement')} />;
       case 'abonnement':
-        return <Abonnement onBack={() => setCurrentScreen(previousScreen)} onSubscribed={() => setCurrentScreen('home')} />;
+        return <Abonnement onBack={handlePopScreen} onSubscribed={() => setCurrentScreen('home')} />;
       default:
-        return <Home onHoroscope={() => handleTabChange('horoscope')} onProfil={() => handleTabChange('profil')} />;
+        return <Home onHoroscope={() => handlePushScreen('horoscope')} onProfil={() => handleTabChange('profil')} />;
     }
   };
+
+  // ─── VARIANTS D'ANIMATION ───
+  const slideVariants = {
+    enter: (direction) => ({
+      x: direction.x,
+      y: direction.y,
+      opacity: 0,
+      scale: STACK_SCREENS.includes(currentScreen) ? 0.95 : 1,
+    }),
+    center: {
+      x: 0,
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      transition: {
+        duration: 0.4,
+        ease: [0.25, 0.1, 0.25, 1], // Courbe iOS-like
+      }
+    },
+    exit: (direction) => ({
+      x: direction.x * -0.3, // Recule légèrement
+      y: direction.y * -0.3,
+      opacity: 0,
+      scale: STACK_SCREENS.includes(previousScreen) ? 0.95 : 1,
+      transition: {
+        duration: 0.3,
+        ease: [0.25, 0.1, 0.25, 1],
+      }
+    })
+  };
+
+  const direction = getSlideDirection();
 
   return (
     <div className="h-screen w-screen bg-night flex flex-col overflow-hidden">
       <NotificationToast />
       
       <div className="flex-1 overflow-hidden relative">
-        <AnimatePresence mode="wait">
-          <motion.div key={currentScreen} ref={scrollRef}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className="w-full h-full overflow-y-auto"
-            style={{ scrollBehavior: 'smooth', WebkitOverflowScrolling: 'touch' }}>
+        <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+          <motion.div 
+            key={currentScreen} 
+            ref={scrollRef}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            className="w-full h-full overflow-y-auto absolute top-0 left-0"
+            style={{ scrollBehavior: 'smooth', WebkitOverflowScrolling: 'touch' }}
+          >
             {renderScreen()}
           </motion.div>
         </AnimatePresence>
       </div>
 
       {showNav && (
-        <nav className="h-16 bg-[#090C1E] border-t border-border flex items-center justify-around px-2 shrink-0">
+        <nav className="h-16 bg-[#090C1E] border-t border-border flex items-center justify-around px-2 shrink-0 z-50 relative">
           {[
             { id: 'home', label: 'ACCUEIL', icon: 'home' },
             { id: 'natal', label: 'THÈME', icon: 'wheel' },
@@ -332,12 +406,19 @@ const AppContent = () => {
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
-                className="flex flex-col items-center gap-1 min-w-[60px] py-2"
+                className="flex flex-col items-center gap-1 min-w-[60px] py-2 relative"
               >
                 {renderIcon()}
                 <span className={`text-[9px] tracking-wide font-serif ${isActive ? 'text-gold' : 'text-muted'}`}>
                   {tab.label}
                 </span>
+                {isActive && (
+                  <motion.div 
+                    layoutId="activeTab"
+                    className="absolute -top-0.5 w-8 h-0.5 bg-gold rounded-full"
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
               </button>
             );
           })}

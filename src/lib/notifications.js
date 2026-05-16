@@ -1,7 +1,6 @@
 // src/lib/notifications.js
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
-import { Toast } from '@capacitor/toast';
 
 // ─── PERSISTENCE VIA LOCALSTORAGE (survit à l'app fermée) ───
 export function getPendingDeepLink() {
@@ -35,16 +34,14 @@ export async function initPushNotifications() {
       vibration: true,
       lights: true
     });
-    await Toast.show({ text: '✅ Canal notif créé' });
+    console.log('✅ Canal astra_default créé');
   } catch (err) {
-    await Toast.show({ text: '❌ Erreur canal: ' + err.message });
+    console.error('❌ Erreur création canal:', err);
   }
 
   // Écoute les notifications reçues (app ouverte)
-  PushNotifications.addListener('pushNotificationReceived', async (notification) => {
-    await Toast.show({ 
-      text: '🔔 Notif reçue: ' + (notification.title || 'Astra').substring(0, 30) 
-    });
+  PushNotifications.addListener('pushNotificationReceived', (notification) => {
+    console.log('🔔 Notification reçue (app ouverte):', notification);
     
     window.dispatchEvent(new CustomEvent('astra-notification', {
       detail: {
@@ -56,11 +53,11 @@ export async function initPushNotifications() {
   });
 
   // ─── ÉCOUTE LES CLICS SUR NOTIFICATION (DEEP LINK) ───
-  PushNotifications.addListener('pushNotificationActionPerformed', async (notification) => {
-    await Toast.show({ text: '👆 CLIC NOTIF DÉTECTÉ !' });
+  PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+    console.log('👆 Notification cliquée:', notification);
     
     const data = notification.notification?.data || notification.data || {};
-    await Toast.show({ text: 'Data: ' + JSON.stringify(data).substring(0, 40) });
+    console.log('📊 Deep link data:', JSON.stringify(data));
     
     if (data.screen) {
       const deepLink = {
@@ -74,30 +71,33 @@ export async function initPushNotifications() {
       
       // Stocke dans localStorage pour persistance
       localStorage.setItem('astra_pending_deep_link', JSON.stringify(deepLink));
-      await Toast.show({ text: '💾 Stocké: ' + data.screen });
+      console.log('💾 Deep link stocké:', data.screen);
       
       // Émet aussi un événement si app ouverte
       window.dispatchEvent(new CustomEvent('astra-deep-link', {
         detail: deepLink
       }));
     } else {
-      await Toast.show({ text: '❌ Pas de data.screen' });
+      console.log('❌ Pas de data.screen dans la notif');
     }
   });
 
   // Vérifie/demande la permission
   let permission = await PushNotifications.checkPermissions();
+  console.log('🔔 Current permission:', permission.receive);
+
   if (permission.receive === 'prompt') {
     permission = await PushNotifications.requestPermissions();
+    console.log('🔔 After request:', permission.receive);
   }
 
   if (permission.receive !== 'granted') {
-    await Toast.show({ text: '❌ Permission refusée' });
+    console.log('❌ Permission denied');
     return null;
   }
 
   await PushNotifications.register();
-  await Toast.show({ text: '🔔 Push enregistré' });
+  console.log('🔔 register() called');
 }
 
 export function getFCMToken() {
@@ -108,16 +108,19 @@ export function getFCMToken() {
     }
 
     const timeout = setTimeout(() => {
+      console.log('❌ Token timeout');
       resolve(null);
     }, 10000);
 
     PushNotifications.addListener('registration', (token) => {
       clearTimeout(timeout);
+      console.log('✅ FCM Token:', token.value);
       resolve(token.value);
     });
 
     PushNotifications.addListener('registrationError', (err) => {
       clearTimeout(timeout);
+      console.error('❌ Registration error:', JSON.stringify(err));
       resolve(null);
     });
 
