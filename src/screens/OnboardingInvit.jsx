@@ -1,6 +1,10 @@
+// src/screens/OnboardingInvit.jsx
 import React, { useState, useMemo } from 'react';
+import { Share } from '@capacitor/share';
+import { Clipboard } from '@capacitor/clipboard';
+import { useProfile } from '../hooks/useProfile';
+import { useAuthContext } from '../context/AuthContext';
 
-// SVG zodiac inline — 0 dépendance externe, 0 emoji coloré
 const ZodiacSVG = ({ signe }) => {
   const paths = {
     "Verseau": "M6 14 Q9 9 12 14 Q15 19 18 14 Q21 9 24 14 M6 19 Q9 14 12 19 Q15 24 18 19 Q21 14 24 19",
@@ -18,15 +22,8 @@ const ZodiacSVG = ({ signe }) => {
   };
 
   return (
-    <svg
-      width="64" height="64" viewBox="0 0 30 30"
-      fill="none"
-      stroke="#C9A460"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="drop-shadow-[0_0_8px_rgba(201,164,96,0.4)]"
-    >
+    <svg width="64" height="64" viewBox="0 0 30 30" fill="none" stroke="#C9A460" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+      className="drop-shadow-[0_0_8px_rgba(201,164,96,0.4)]">
       <path d={paths[signe] || "M15 4 L17 10 L23 10 L18 14 L20 20 L15 16 L10 20 L12 14 L7 10 L13 10 Z"} />
     </svg>
   );
@@ -57,6 +54,8 @@ const FEATURES = [
 const OnboardingInvit = ({ onFinish, userNom = "Voyageur", signeSolaire = "Verseau" }) => {
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const { user } = useAuthContext();
+  const { profile } = useProfile(user?.id);
 
   const stars = useMemo(() => (
     Array.from({ length: 50 }, (_, i) => ({
@@ -72,104 +71,86 @@ const OnboardingInvit = ({ onFinish, userNom = "Voyageur", signeSolaire = "Verse
     if (sharing) return;
     setSharing(true);
 
-    const appUrl = window.location.origin;
-    const shareText = `✦ ${userNom} t'invite sur Astra, l'appli d'astrologie française.\nDécouvrons nos affinités astrales ensemble.\n${appUrl}`;
+    // Option B : fallback sur user.id si pas de share_token
+    const token = profile?.share_token || user?.id;
+    const inviteLink = token
+      ? `${window.location.origin}/invite/${token}`
+      : window.location.origin;
 
-    if (navigator.share) {
+    const shareText = `✦ ${userNom} t'invite sur Astra, l'appli d'astrologie française.\nDécouvrons nos affinités astrales ensemble.`;
+
+    try {
+      // Essai 1 : Partage natif Android (WhatsApp, SMS, Email...)
+      await Share.share({
+        title: 'Invitation Astra',
+        text: shareText,
+        url: inviteLink,
+        dialogTitle: 'Inviter un allié'
+      });
+      setCopied(true);
+      setTimeout(onFinish, 800);
+    } catch (err) {
+      // L'utilisateur a annulé ou erreur
+      console.log('Share annulé:', err);
+      
+      // Essai 2 : Copier dans le presse-papiers natif
       try {
-        await navigator.share({ title: 'Invitation Astra', text: shareText, url: appUrl });
-        onFinish();
-      } catch (err) {
-        if (err.name !== 'AbortError') onFinish();
-        setSharing(false);
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(shareText);
+        await Clipboard.write({ string: inviteLink });
         setCopied(true);
         setTimeout(onFinish, 1500);
-      } catch {
+      } catch (err2) {
+        console.log('Clipboard échoue:', err2);
+        // Fallback : on continue quand même
         onFinish();
       }
+    } finally {
+      setSharing(false);
     }
   };
 
   return (
     <div className="relative w-full h-full bg-night overflow-hidden flex flex-col items-center justify-between py-10 px-5">
-
-      {/* Étoiles CSS */}
       <div className="absolute inset-0 pointer-events-none">
         {stars.map(s => (
-          <div
-            key={s.id}
-            className="absolute rounded-full bg-cream"
+          <div key={s.id} className="absolute rounded-full bg-cream"
             style={{
-              left: `${s.left}%`,
-              top: `${s.top}%`,
-              width: `${s.size}px`,
-              height: `${s.size}px`,
+              left: `${s.left}%`, top: `${s.top}%`,
+              width: `${s.size}px`, height: `${s.size}px`,
               animation: `twinkle ${2 + s.delay}s ease-in-out ${s.delay}s infinite`
-            }}
-          />
+            }} />
         ))}
       </div>
 
-      {/* HEADER */}
-      <div
-        className="relative z-10 text-center anim-fadeslide"
-        style={{ animationDelay: '0.1s' }}
-      >
+      <div className="relative z-10 text-center anim-fadeslide" style={{ animationDelay: '0.1s' }}>
         <div className="mb-5 flex justify-center">
           <ZodiacSVG signe={signeSolaire} />
         </div>
         <h1 className="font-serif text-cream text-2xl mb-2">
           Bienvenue, <span className="text-gold">{userNom.split(' ')[0]}</span>
         </h1>
-        <p className="font-serif italic text-muted text-sm">
-          Les astres ont tenu leur promesse
-        </p>
+        <p className="font-serif italic text-muted text-sm">Les astres ont tenu leur promesse</p>
       </div>
 
-      {/* CARD INVITATION */}
-      <div
-        className="relative z-10 w-full anim-fadeslide"
-        style={{ animationDelay: '0.3s' }}
-      >
+      <div className="relative z-10 w-full anim-fadeslide" style={{ animationDelay: '0.3s' }}>
         <div className="bg-[#120E22] border border-gold/20 rounded-3xl p-5 shadow-xl shadow-black/40">
-
-          <p className="text-[9px] text-gold tracking-[3px] uppercase font-sans font-bold mb-3">
-            Inviter vos proches
-          </p>
+          <p className="text-[9px] text-gold tracking-[3px] uppercase font-sans font-bold mb-3">Inviter vos proches</p>
           <p className="text-[#B0ADCA] text-xs leading-relaxed font-sans mb-5">
             Certaines affinités ne se voient qu'à travers le prisme du ciel. Partagez votre carte du ciel avec ceux qui comptent.
           </p>
-
-          <button
-            onClick={handleShare}
-            disabled={sharing}
-            className="w-full bg-gold text-night font-serif font-bold py-4 rounded-2xl shadow-lg shadow-gold/10 active:scale-[0.98] transition-all disabled:opacity-60"
-          >
+          <button onClick={handleShare} disabled={sharing}
+            className="w-full bg-gold text-night font-serif font-bold py-4 rounded-2xl shadow-lg shadow-gold/10 active:scale-[0.98] transition-all disabled:opacity-60">
             {copied ? "✓ Lien copié !" : sharing ? "Partage en cours..." : "Partager mon invitation"}
           </button>
         </div>
 
-        {/* 3 features SVG — zéro emoji */}
         <div className="flex gap-3 mt-4">
           {FEATURES.map((f, i) => (
-            <div
-              key={i}
-              className="flex-1 bg-card border border-border rounded-2xl p-3 text-center anim-fadeslide"
-              style={{ animationDelay: `${0.4 + i * 0.1}s` }}
-            >
-              <svg
-                width="22" height="22" viewBox="0 0 24 24"
-                fill="none" className="mx-auto mb-2"
-              >
+            <div key={i} className="flex-1 bg-card border border-border rounded-2xl p-3 text-center anim-fadeslide"
+              style={{ animationDelay: `${0.4 + i * 0.1}s` }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="mx-auto mb-2">
                 {f.svg}
               </svg>
-              <span
-                className="text-[9px] text-muted tracking-tight whitespace-pre-line leading-tight font-sans"
-              >
+              <span className="text-[9px] text-muted tracking-tight whitespace-pre-line leading-tight font-sans">
                 {f.label}
               </span>
             </div>
@@ -177,25 +158,16 @@ const OnboardingInvit = ({ onFinish, userNom = "Voyageur", signeSolaire = "Verse
         </div>
       </div>
 
-      {/* ACTIONS */}
-      <div
-        className="relative z-10 w-full flex flex-col items-center gap-3 anim-fadeslide"
-        style={{ animationDelay: '0.6s' }}
-      >
-        <button
-          onClick={onFinish}
-          className="w-full border border-gold/20 text-cream font-serif py-4 rounded-2xl hover:bg-white/5 transition-colors active:scale-[0.98]"
-        >
+      <div className="relative z-10 w-full flex flex-col items-center gap-3 anim-fadeslide" style={{ animationDelay: '0.6s' }}>
+        <button onClick={onFinish}
+          className="w-full border border-gold/20 text-cream font-serif py-4 rounded-2xl hover:bg-white/5 transition-colors active:scale-[0.98]">
           Explorer mon thème →
         </button>
-        <button
-          onClick={onFinish}
-          className="text-muted/40 text-[10px] tracking-[3px] uppercase hover:text-muted transition-colors py-1"
-        >
+        <button onClick={onFinish}
+          className="text-muted/40 text-[10px] tracking-[3px] uppercase hover:text-muted transition-colors py-1">
           Passer cette étape
         </button>
       </div>
-
     </div>
   );
 };
