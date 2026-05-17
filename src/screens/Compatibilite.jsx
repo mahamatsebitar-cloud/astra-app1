@@ -63,6 +63,7 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
   const [showSearch, setShowSearch] = useState(false);
   const [animBars, setAnimBars] = useState(false);
   const [invitationStatus, setInvitationStatus] = useState(null);
+  const [shareStatus, setShareStatus] = useState(null); // ← AJOUTÉ : état du partage
   const scrollRef = useRef(null);
 
   // ─── GESTION DU DEEP LINK ───
@@ -72,10 +73,8 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
     console.log('🔗 Compatibilite deep link:', deepLinkTarget);
 
     if (deepLinkTarget.type === 'pending') {
-      // Affiche les demandes en attente (scroll vers elles)
       setShowSearch(false);
       setVue('liste');
-      // Scroll vers les demandes après le render
       setTimeout(() => {
         const pendingSection = document.querySelector('[data-pending-section]');
         if (pendingSection) {
@@ -83,7 +82,6 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
         }
       }, 300);
     } else if (deepLinkTarget.type === 'friend' && deepLinkTarget.id) {
-      // Trouve l'ami et ouvre son profil
       const friend = friends.find(f => f.ami?.id === deepLinkTarget.id);
       if (friend) {
         setAmiSelectionne(friend);
@@ -91,7 +89,6 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
       }
     }
 
-    // Consume le deep link
     onDeepLinkConsumed?.();
   }, [deepLinkTarget, friends, onDeepLinkConsumed]);
 
@@ -133,14 +130,38 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
     }
   };
 
+  // ─── PARTAGE DE PROFIL (Option C : natif + fallback) ───
   const handleShare = async () => {
     const link = getShareLink();
-    if (!link) return;
-    try {
-      await navigator.share({ title: 'Mon profil Astra', url: link });
-    } catch {
-      await navigator.clipboard.writeText(link);
+    
+    if (!link) {
+      setShareStatus('error');
+      setTimeout(() => setShareStatus(null), 3000);
+      return;
     }
+
+    try {
+      // Essai 1 : Partage natif (mobile)
+      await navigator.share({ 
+        title: 'Rejoins-moi sur Astra', 
+        text: 'Découvre notre compatibilité astrologique !',
+        url: link 
+      });
+      setShareStatus('shared');
+    } catch (err) {
+      // navigator.share échoue → fallback presse-papiers
+      try {
+        await navigator.clipboard.writeText(link);
+        setShareStatus('copied');
+      } catch {
+        // Fallback ultime : sélection manuelle
+        setShareStatus('manual');
+        prompt('Copie ce lien pour inviter tes amis :', link);
+      }
+    }
+    
+    // Reset le statut après 3s
+    setTimeout(() => setShareStatus(null), 3000);
   };
 
   // VUE 3 — PROFIL D'UN AMI
@@ -334,7 +355,7 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
         </div>
       )}
 
-      {/* ─── DEMANDES EN ATTENTE AVEC DATA ATTR POUR DEEP LINK ─── */}
+      {/* ─── DEMANDES EN ATTENTE ─── */}
       {pendingRequests.length > 0 && (
         <div className="space-y-4" data-pending-section>
           <p className="text-[10px] text-gold tracking-[0.2em] uppercase font-bold ml-1">Appels des astres</p>
@@ -418,9 +439,25 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
         )}
       </div>
 
-      <button onClick={handleShare} className="w-full border border-gold/20 text-gold text-sm py-3 rounded-full active:scale-95 transition-all mt-4">
-        Partager mon profil astral
-      </button>
+      {/* ─── BOUTON PARTAGER AVEC FEEDBACK ─── */}
+      <div className="relative">
+        <button 
+          onClick={handleShare} 
+          disabled={shareStatus === 'shared' || shareStatus === 'copied'}
+          className={`w-full border text-sm py-3 rounded-full active:scale-95 transition-all mt-4 ${
+            shareStatus === 'error' 
+              ? 'border-red-500/30 text-red-400 bg-red-500/5' 
+              : shareStatus === 'shared' || shareStatus === 'copied'
+                ? 'border-green-500/30 text-green-400 bg-green-500/5'
+                : 'border-gold/20 text-gold hover:bg-gold/5'
+          }`}
+        >
+          {shareStatus === 'shared' ? '✓ Partagé !' 
+            : shareStatus === 'copied' ? '✓ Lien copié !' 
+            : shareStatus === 'error' ? '✗ Erreur, réessaie'
+            : 'Partager mon profil astral'}
+        </button>
+      </div>
     </div>
   );
 };

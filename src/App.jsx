@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { useProfile } from './hooks/useProfile';
@@ -40,7 +41,7 @@ const STACK_SCREENS = ['horoscope', 'noeud_lunaire', 'abonnement'];
 const AppContent = () => {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const { profile, loading: profileLoading } = useProfile(user?.id);
-  
+
   const [currentScreen, setCurrentScreen] = useState('splash');
   const [activeTab, setActiveTab] = useState('home');
   const [previousScreen, setPreviousScreen] = useState('home');
@@ -50,10 +51,10 @@ const AppContent = () => {
     heure: '12:00',
     ville: 'Paris, France'
   });
-  
+
   // ─── DEEP LINK STATE ───
   const [deepLinkTarget, setDeepLinkTarget] = useState(null);
-  
+
   const scrollRef = useRef(null);
 
   // ━━━ GESTION LIEN DE PARTAGE /invite/TOKEN ━━━
@@ -94,7 +95,7 @@ const AppContent = () => {
       console.log('🔗 Deep link event:', data);
       processDeepLink(data);
     };
-    
+
     window.addEventListener('astra-deep-link', handleDeepLink);
     return () => window.removeEventListener('astra-deep-link', handleDeepLink);
   }, []);
@@ -103,10 +104,10 @@ const AppContent = () => {
   useEffect(() => {
     if (authLoading || profileLoading || !isAuthenticated) return;
     if (currentScreen === 'loading' || currentScreen === 'splash') return;
-    
+
     const link = getPendingDeepLink();
     if (!link) return;
-    
+
     console.log('🎯 Deep link trouvé:', link);
     processDeepLink(link);
   }, [authLoading, profileLoading, isAuthenticated, currentScreen]);
@@ -117,9 +118,9 @@ const AppContent = () => {
       console.log('❌ Pas de screen dans deep link');
       return;
     }
-    
+
     console.log('🚀 Navigation vers:', data.screen);
-    
+
     switch (data.screen) {
       case 'home':
         setCurrentScreen('home');
@@ -159,10 +160,39 @@ const AppContent = () => {
     }
   }, [currentScreen]);
 
+  // ─── INTERCEPTER BOUTON RETOUR ANDROID ───
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const handleBackButton = async () => {
+      // Si on est sur un écran stack (horoscope, noeud, abonnement), on revient en arrière
+      if (STACK_SCREENS.includes(currentScreen) && previousScreen) {
+        handlePopScreen();
+        return;
+      }
+      
+      // Si on est sur un tab autre que home, on retourne à home
+      if (!STACK_SCREENS.includes(currentScreen) && currentScreen !== 'home') {
+        setCurrentScreen('home');
+        setActiveTab('home');
+        return;
+      }
+      
+      // Sinon (on est sur home ou splash/login), on quitte l'app normalement
+      // Ne rien faire = comportement par défaut Capacitor = quitter l'app
+    };
+
+    CapacitorApp.addListener('backButton', handleBackButton);
+
+    return () => {
+      CapacitorApp.removeAllListeners();
+    };
+  }, [currentScreen, previousScreen]);
+
   // Navigation intelligente
   useEffect(() => {
     console.log('NAV DEBUG:', { authLoading, profileLoading, isAuthenticated, hasProfile: !!profile, currentScreen });
-    
+
     if (authLoading || profileLoading) return;
 
     if (currentScreen === 'loading') {
@@ -210,13 +240,13 @@ const AppContent = () => {
     if (STACK_SCREENS.includes(currentScreen)) {
       return { x: 0, y: 100 }; // Monte du bas
     }
-    
+
     // Si c'est un tab screen, slide horizontal
     const currentIndex = TAB_ORDER.indexOf(currentScreen);
     const prevIndex = TAB_ORDER.indexOf(previousTab);
-    
+
     if (currentIndex === -1 || prevIndex === -1) return { x: 0, y: 0 };
-    
+
     // Direction : droite (x: 100) ou gauche (x: -100)
     return currentIndex > prevIndex ? { x: 300, y: 0 } : { x: -300, y: 0 };
   }, [currentScreen, previousTab]);
@@ -298,13 +328,13 @@ const AppContent = () => {
     }
   };
 
-  // ─── VARIANTS D'ANIMATION ───
+  // ─── VARIANTS D'ANIMATION (ADOUCIES) ───
   const slideVariants = {
     enter: (direction) => ({
       x: direction.x,
       y: direction.y,
       opacity: 0,
-      scale: STACK_SCREENS.includes(currentScreen) ? 0.95 : 1,
+      scale: STACK_SCREENS.includes(currentScreen) ? 0.96 : 1,
     }),
     center: {
       x: 0,
@@ -312,18 +342,18 @@ const AppContent = () => {
       opacity: 1,
       scale: 1,
       transition: {
-        duration: 0.4,
-        ease: [0.25, 0.1, 0.25, 1], // Courbe iOS-like
+        duration: 0.6,
+        ease: [0.22, 1, 0.36, 1],
       }
     },
     exit: (direction) => ({
-      x: direction.x * -0.3, // Recule légèrement
-      y: direction.y * -0.3,
-      opacity: 0,
-      scale: STACK_SCREENS.includes(previousScreen) ? 0.95 : 1,
+      x: direction.x * -0.15,
+      y: direction.y * -0.15,
+      opacity: 0.6,
+      scale: 1,
       transition: {
-        duration: 0.3,
-        ease: [0.25, 0.1, 0.25, 1],
+        duration: 0.5,
+        ease: [0.22, 1, 0.36, 1],
       }
     })
   };
@@ -333,7 +363,7 @@ const AppContent = () => {
   return (
     <div className="h-screen w-screen bg-night flex flex-col overflow-hidden">
       <NotificationToast />
-      
+
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="popLayout" initial={false} custom={direction}>
           <motion.div 
@@ -362,7 +392,7 @@ const AppContent = () => {
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             const strokeColor = isActive ? 'var(--color-gold)' : 'var(--color-muted)';
-            
+
             const renderIcon = () => {
               switch(tab.icon) {
                 case 'home':

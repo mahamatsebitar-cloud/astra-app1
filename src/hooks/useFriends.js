@@ -111,10 +111,12 @@ const useFriends = () => {
   }, [user?.id]);
 
   // ━━━ GÉNÉRER LIEN DE PARTAGE ━━━
+  // Option B : fallback sur user.id si pas de share_token
   const getShareLink = useCallback(() => {
-    if (!profile?.share_token) return null;
-    return `${window.location.origin}/invite/${profile.share_token}`;
-  }, [profile]);
+    const token = profile?.share_token || user?.id;
+    if (!token) return null;
+    return `${window.location.origin}/invite/${token}`;
+  }, [profile, user]);
 
   // ━━━ EXPOSER ━━━
   return {
