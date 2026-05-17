@@ -1,5 +1,7 @@
 // src/screens/Compatibilite.jsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Share } from '@capacitor/share';
+import { Clipboard } from '@capacitor/clipboard';
 import Card from '../components/ui/Card';
 import ZodiacSymbol from '../components/ui/ZodiacSymbol';
 import PlanetCircle from '../components/ui/PlanetCircle';
@@ -63,7 +65,7 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
   const [showSearch, setShowSearch] = useState(false);
   const [animBars, setAnimBars] = useState(false);
   const [invitationStatus, setInvitationStatus] = useState(null);
-  const [shareStatus, setShareStatus] = useState(null); // ← AJOUTÉ : état du partage
+  const [shareStatus, setShareStatus] = useState(null);
   const scrollRef = useRef(null);
 
   // ─── GESTION DU DEEP LINK ───
@@ -130,9 +132,11 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
     }
   };
 
-  // ─── PARTAGE DE PROFIL (Option C : natif + fallback) ───
+  // ─── PARTAGE DE PROFIL (Capacitor Share + Clipboard) ───
   const handleShare = async () => {
     const link = getShareLink();
+    
+    console.log('🔗 Share link:', link);
     
     if (!link) {
       setShareStatus('error');
@@ -141,26 +145,29 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
     }
 
     try {
-      // Essai 1 : Partage natif (mobile)
-      await navigator.share({ 
-        title: 'Rejoins-moi sur Astra', 
-        text: 'Découvre notre compatibilité astrologique !',
-        url: link 
+      // Essai 1 : Partage natif Android (WhatsApp, SMS, Email...)
+      await Share.share({
+        title: 'Rejoins-moi sur Astra',
+        text: 'Découvre notre compatibilité astrologique ! 🌙',
+        url: link,
+        dialogTitle: 'Inviter un allié'
       });
       setShareStatus('shared');
     } catch (err) {
-      // navigator.share échoue → fallback presse-papiers
+      // L'utilisateur a annulé ou erreur
+      console.log('Share annulé:', err);
+      
+      // Essai 2 : Copier dans le presse-papiers natif
       try {
-        await navigator.clipboard.writeText(link);
+        await Clipboard.write({ string: link });
         setShareStatus('copied');
-      } catch {
-        // Fallback ultime : sélection manuelle
+      } catch (err2) {
+        console.log('Clipboard échoue:', err2);
+        // Fallback ultime
         setShareStatus('manual');
-        prompt('Copie ce lien pour inviter tes amis :', link);
       }
     }
     
-    // Reset le statut après 3s
     setTimeout(() => setShareStatus(null), 3000);
   };
 
