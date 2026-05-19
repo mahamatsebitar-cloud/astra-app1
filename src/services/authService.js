@@ -2,6 +2,8 @@
 import { supabase } from '../lib/supabase';
 import { getSigneSolaire, getSigneLunaire, getAscendant } from './astroService';
 
+const SUPABASE_URL = supabase.supabaseUrl;
+
 /**
  * Inscrit un utilisateur avec ses données natales complètes
  */
@@ -76,18 +78,47 @@ export async function signOut() {
 }
 
 /**
- * Suppression du compte (Conformité Google Play & RGPD)
+ * Suppression complète du compte (RGPD) via Edge Function
  */
 export async function deleteAccount(userId) {
   try {
-    const { error: dbError } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', userId);
+    // 1. Récupérer le token JWT de la session active
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
 
-    if (dbError) throw dbError;
+    if (!accessToken) {
+      throw new Error('Session invalide. Veuillez vous reconnecter.');
+    }
+
+    // 2. Appeler la Edge Function avec le JWT de l'utilisateur
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/delete-user`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`, // ← Token JWT de session
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      }
+    );
+
+    // 3. Gérer la réponse (même si vide ou erreur)
+    const text = await response.text();
+    const result = text ? JSON.parse(text) : { success: true };
+
+    if (!response.ok) {
+      throw new Error(result.message || result.error || 'Erreur lors de la suppression');
+    }
+
+    // 4. Déconnexion locale
     await supabase.auth.signOut();
-    
+
+    // 5. Nettoyage local
+    localStorage.removeItem('astra_pending_userId');
+    localStorage.removeItem('astra_invite_token');
+    localStorage.removeItem('astra_onboarding_data');
+
     return { error: null };
   } catch (err) {
     console.error("Erreur suppression compte:", err);
