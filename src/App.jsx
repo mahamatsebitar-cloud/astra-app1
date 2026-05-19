@@ -40,12 +40,13 @@ const STACK_SCREENS = ['horoscope', 'noeud_lunaire', 'abonnement'];
 
 const AppContent = () => {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
-  const { profile, loading: profileLoading } = useProfile(user?.id);
+  const { profile, loading: profileLoading } = useProfile(isAuthenticated ? user?.id : null);
 
   const [currentScreen, setCurrentScreen] = useState('splash');
   const [activeTab, setActiveTab] = useState('home');
   const [previousScreen, setPreviousScreen] = useState('home');
   const [previousTab, setPreviousTab] = useState('home');
+  const [loginMode, setLoginMode] = useState('connexion');
   const [onboardingData, setOnboardingData] = useState({
     dateNaissance: '',
     heure: '12:00',
@@ -186,6 +187,9 @@ const AppContent = () => {
 
   // Navigation intelligente
   useEffect(() => {
+    // Ne pas interférer avec l'écran de login — laisser Login.jsx gérer son propre state
+    if (currentScreen === 'login') return;
+
     console.log('NAV DEBUG:', { authLoading, profileLoading, isAuthenticated, hasProfile: !!profile, currentScreen });
 
     if (authLoading || profileLoading) return;
@@ -266,6 +270,12 @@ const AppContent = () => {
     setCurrentScreen(previousScreen);
   };
 
+  // ─── HANDLER LOGIN AVEC MODE ───
+  const handleLogin = (mode) => {
+    setLoginMode(mode);
+    setCurrentScreen('login');
+  };
+
   if (authLoading || profileLoading) {
     return (
       <div className="h-screen w-screen bg-night flex items-center justify-center">
@@ -282,9 +292,9 @@ const AppContent = () => {
   const renderScreen = () => {
     switch (currentScreen) {
       case 'splash':
-        return <Splash onStart={() => setCurrentScreen('onb1')} onLogin={() => setCurrentScreen('login')} />;
+        return <Splash onStart={() => setCurrentScreen('onb1')} onLogin={handleLogin} />;
       case 'login':
-        return <Login onSuccess={() => { setCurrentScreen('home'); setActiveTab('home'); }} />;
+        return <Login onSuccess={() => { setCurrentScreen('home'); setActiveTab('home'); }} mode={loginMode} />;
       case 'onb1':
         return <Onboarding1 onNext={(date) => { setOnboardingData(prev => ({...prev, dateNaissance: date})); setCurrentScreen('onb2'); }} />;
       case 'onb2':

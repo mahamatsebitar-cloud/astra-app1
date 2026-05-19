@@ -83,10 +83,10 @@ const Splash = ({ onStart, onLogin }) => {
 
       {/* Actions */}
       <div className="w-full space-y-4 px-8">
-        <Button onClick={onLogin} variant="primary">
+        <Button onClick={() => onLogin('inscription')} variant="primary">
           Révéler mon thème
         </Button>
-        <Button onClick={onLogin} variant="outline">
+        <Button onClick={() => onLogin('connexion')} variant="outline">
           Retrouver mon ciel
         </Button>
       </div>

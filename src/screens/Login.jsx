@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { signUp, signIn } from '../services/authService';
+import { translateError } from '../lib/errorMessages';
 import Button from '../components/ui/Button';
+import ErrorToast from '../components/ui/ErrorToast';
 
-const Login = ({ onSuccess }) => {
-  const [isRegister, setIsRegister] = useState(false);
+const Login = ({ onSuccess, mode }) => {
+  const [isRegister, setIsRegister] = useState(mode === 'inscription');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nom, setNom] = useState('');
@@ -23,7 +25,7 @@ const Login = ({ onSuccess }) => {
         lieu_naissance: null
       });
       if (err) {
-        setError(err.message);
+        setError(translateError(err));
       } else {
         if (data?.userId) {
           localStorage.setItem('astra_pending_userId', data.userId);
@@ -33,7 +35,7 @@ const Login = ({ onSuccess }) => {
     } else {
       const { error: err } = await signIn(email, password);
       if (err) {
-        setError(err.message);
+        setError(translateError(err));
       } else {
         onSuccess();
       }
@@ -42,7 +44,14 @@ const Login = ({ onSuccess }) => {
   };
 
   return (
-    <div className="h-full flex flex-col justify-center px-8 pb-12 bg-night">
+    <div className="h-full flex flex-col justify-center px-8 pb-12 bg-night relative">
+      
+      {/* Toast d'erreur animé */}
+      <ErrorToast 
+        message={error} 
+        onClose={() => setError(null)} 
+      />
+
       <div className="mb-10 text-center">
         <h2 className="font-serif text-3xl text-gold mb-2">Astra</h2>
         <p className="text-muted text-xs tracking-widest uppercase">
@@ -78,15 +87,13 @@ const Login = ({ onSuccess }) => {
           required
         />
 
-        {error && <p className="text-red-400 text-[10px] text-center italic">{error}</p>}
-
         <Button type="submit" disabled={isLoading}>
           {isLoading ? "Consultation des astres..." : isRegister ? "S'inscrire" : "Se connecter"}
         </Button>
       </form>
 
       <button
-        onClick={() => setIsRegister(!isRegister)}
+        onClick={() => { setIsRegister(!isRegister); setError(null); }}
         className="mt-6 text-muted text-[10px] uppercase tracking-widest hover:text-gold transition-colors"
       >
         {isRegister ? "Déjà un compte ? Se connecter" : "Nouveau voyageur ? S'inscrire"}
