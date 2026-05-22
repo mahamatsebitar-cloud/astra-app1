@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import Button from "../components/ui/Button";
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
+import { useProfileContext } from '../context/ProfileContext';
 import { saveProfile } from '../services/profileService';
 import { supabase } from '../lib/supabase';
 import { getSigneSolaire, getSigneLunaire, getAscendant } from '../services/astroService';
@@ -10,6 +11,7 @@ import { getSigneSolaire, getSigneLunaire, getAscendant } from '../services/astr
 const Onboarding3 = ({ onFinish, dateNaissance, heure }) => {
   const { user } = useAuthContext();
   const { profile } = useProfile(user?.id); 
+  const { refreshProfile } = useProfileContext();
   const [isLoading, setIsLoading] = useState(false);
   
   const [query, setQuery] = useState('');
@@ -73,6 +75,13 @@ const Onboarding3 = ({ onFinish, dateNaissance, heure }) => {
         console.error('saveProfile error:', result.error);
         alert("Erreur lors de la sauvegarde : " + result.error.message);
       } else {
+        await refreshProfile();
+        
+        // 🛡️ Protection contre le bug de re-login (profiles 406 Supabase)
+        if (user?.id) {
+          localStorage.setItem('astra_ob_done_' + user.id, '1');
+        }
+        
         onFinish();
       }
     } catch (err) {

@@ -57,6 +57,7 @@ const AppContent = () => {
   const [deepLinkTarget, setDeepLinkTarget] = useState(null);
 
   const scrollRef = useRef(null);
+  const [isInOnboarding, setIsInOnboarding] = useState(false);
 
   // ━━━ GESTION LIEN DE PARTAGE /invite/TOKEN ━━━
   useEffect(() => {
@@ -187,26 +188,29 @@ const AppContent = () => {
 
   // Navigation intelligente
   useEffect(() => {
-    // Ne pas interférer avec l'écran de login — laisser Login.jsx gérer son propre state
     if (currentScreen === 'login') return;
+    if (authLoading) return;
 
-    console.log('NAV DEBUG:', { authLoading, profileLoading, isAuthenticated, hasProfile: !!profile, currentScreen });
+    // Pendant l'onboarding, ne jamais interférer
+    if (isInOnboarding) return;
 
-    if (authLoading || profileLoading) return;
+    if (profileLoading) return;
 
-    if (currentScreen === 'loading') {
-      if (!isAuthenticated) {
+    console.log('NAV DEBUG:', {
+      authLoading, profileLoading, isAuthenticated,
+      hasProfile: !!profile, currentScreen, isInOnboarding
+    });
+
+    // Déconnexion → splash
+    if (!isAuthenticated) {
+      if (PROTECTED_SCREENS.includes(currentScreen)) {
         setCurrentScreen('splash');
-      } else if (profile && (profile.onboarding_completed || profile.signe_solaire)) {
-        setCurrentScreen('home');
-        setActiveTab('home');
-      } else {
-        setCurrentScreen('onb1');
       }
       return;
     }
 
-    if (isAuthenticated && profile && (profile.onboarding_completed || profile.signe_solaire)) {
+    // Utilisateur avec profil complet
+    if (profile && (profile.onboarding_completed || profile.signe_solaire)) {
       if (PUBLIC_SCREENS.includes(currentScreen)) {
         setCurrentScreen('home');
         setActiveTab('home');
@@ -214,20 +218,24 @@ const AppContent = () => {
       return;
     }
 
-    if (isAuthenticated && (!profile || (!profile.onboarding_completed && !profile.signe_solaire))) {
-      if (!ONBOARDING_SCREENS.includes(currentScreen)) {
-        setCurrentScreen('onb1');
-      }
+    // Utilisateur authentifié sans profil → lancer l'onboarding
+    // SAUF si localStorage indique que l'onboarding a déjà été fait
+    // (protection contre le 406 Supabase au re-login)
+    const obDone = user?.id 
+      ? localStorage.getItem('astra_ob_done_' + user.id) 
+      : null;
+    
+    if (obDone) {
+      // Onboarding déjà fait mais profil pas encore chargé → attendre
       return;
     }
 
-    if (!isAuthenticated) {
-      if (PROTECTED_SCREENS.includes(currentScreen)) {
-        setCurrentScreen('splash');
-      }
-      return;
+    if (!ONBOARDING_SCREENS.includes(currentScreen)) {
+      setIsInOnboarding(true);
+      setCurrentScreen('onb1');
     }
-  }, [authLoading, profileLoading, isAuthenticated, profile, currentScreen]);
+
+  }, [authLoading, profileLoading, isAuthenticated, profile, currentScreen, isInOnboarding, user?.id]);
 
   const showNav = useMemo(() => {
     return ['home', 'natal', 'horoscope', 'compat', 'profil', 'noeud_lunaire'].includes(currentScreen);
@@ -304,7 +312,15 @@ const AppContent = () => {
       case 'loading_theme':
         return <LoadingTheme onComplete={() => setCurrentScreen('onbInvit')} signeSolaire={profile?.signe_solaire} />;
       case 'onbInvit':
-        return <OnboardingInvit onFinish={() => { setCurrentScreen('home'); setActiveTab('home'); }} userNom={profile?.nom || "Voyageur"} signeSolaire={profile?.signe_solaire || "Lion"} />;
+        return <OnboardingInvit 
+          onFinish={() => {
+            setIsInOnboarding(false);
+            setCurrentScreen('home');
+            setActiveTab('home');
+          }}
+          userNom={profile?.nom || "Voyageur"}
+          signeSolaire={profile?.signe_solaire || "Lion"}
+        />;
       case 'home':
         return <Home onHoroscope={() => handlePushScreen('horoscope')} onProfil={() => handleTabChange('profil')} />;
       case 'natal':
