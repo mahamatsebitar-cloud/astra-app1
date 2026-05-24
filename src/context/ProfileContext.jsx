@@ -10,7 +10,7 @@ export function ProfileProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchProfile = useCallback(async () => {
+  const fetchProfile = useCallback(async (tentative = 1) => {
     if (!user?.id) {
       setProfile(null);
       setLoading(false);
@@ -22,10 +22,18 @@ export function ProfileProvider({ children }) {
       const { data, error: err } = await getProfile(user.id);
       if (err) throw err;
       setProfile(data);
-    } catch (e) {
-      setError(e.message);
-    } finally {
       setLoading(false);
+    } catch (e) {
+      if (tentative < 3) {
+        const delai = tentative * 800;
+        console.log(`Profile retry ${tentative}/3 dans ${delai}ms`);
+        setTimeout(() => fetchProfile(tentative + 1), delai);
+        // loading reste true pendant le retry
+      } else {
+        console.warn('Profile fetch abandonné après 3 tentatives');
+        setError(e.message);
+        setLoading(false);
+      }
     }
   }, [user?.id]);
 
