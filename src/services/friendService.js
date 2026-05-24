@@ -84,6 +84,31 @@ export const sendFriendRequest = async (senderId, receiverId) => {
       }
     }
 
+    // ─── VÉRIFICATION LIMITE FREE (1 ami max) ───
+    // On vérifie le nombre d'amis acceptés du sender
+    const { data: friendsCount } = await supabase
+      .from('friendships')
+      .select('id', { count: 'exact' })
+      .or(`sender_id.eq.${senderId},receiver_id.eq.${senderId}`)
+      .eq('status', 'accepted');
+
+    const { data: senderSubscription } = await supabase
+      .from('subscriptions')
+      .select('status, plan')
+      .eq('user_id', senderId)
+      .single();
+
+    const isPremium = senderSubscription?.status === 'active' 
+      && senderSubscription?.plan !== 'free';
+
+    if (!isPremium && (friendsCount?.length || 0) >= 1) {
+      return { 
+        data: null, 
+        error: 'LIMIT_REACHED',
+        limitReached: true 
+      };
+    }
+
     const { data, error } = await supabase
       .from('friendships')
       .insert({

@@ -66,6 +66,7 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
   const [animBars, setAnimBars] = useState(false);
   const [invitationStatus, setInvitationStatus] = useState(null);
   const [shareStatus, setShareStatus] = useState(null);
+  const [showFriendLimit, setShowFriendLimit] = useState(false);
   const scrollRef = useRef(null);
 
   // ─── GESTION DU DEEP LINK ───
@@ -119,7 +120,11 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
   }, [searchQuery, searchUser]);
 
   const handleAddFriend = async (targetId) => {
-    const { error } = await addFriend(targetId);
+    const { error, limitReached } = await addFriend(targetId);
+    if (limitReached) {
+      setInvitationStatus('limit');
+      return;
+    }
     if (error) {
       setInvitationStatus(error.includes('déjà') ? 'duplicate' : 'error');
     } else {
@@ -323,11 +328,35 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
             <p className="text-muted text-[10px] mt-1">@{profile.username}</p>
           )}
         </div>
-        <button onClick={() => setShowSearch(!showSearch)}
+        <button onClick={() => {
+            // Si free et déjà 1 ami → afficher gate au lieu du search
+            if (!showSearch && friends.length >= 1) {
+              setShowFriendLimit(true);
+              return;
+            }
+            setShowSearch(!showSearch);
+          }}
           className={`w-14 h-14 rounded-[20px] flex items-center justify-center transition-all duration-500 shadow-lg ${showSearch ? 'bg-red-500/10 text-red-500 border border-red-500/20 rotate-90' : 'bg-gold/10 text-gold border border-gold/20'}`}>
           <span className="text-3xl font-light">{showSearch ? '×' : '+'}</span>
         </button>
       </header>
+
+      {showFriendLimit && (
+        <div className="animate-in zoom-in-95 duration-300">
+          <PremiumGate featureKey="noeuds_lunaires" onUpgrade={() => { setShowFriendLimit(false); onUpgrade(); }} preview={false}>
+            <div className="p-8 text-center">
+              <p className="font-serif text-cream text-sm">Connexions illimitées</p>
+              <p className="text-muted text-xs mt-2">Rejoins la constellation Astra pour explorer toutes tes affinités.</p>
+            </div>
+          </PremiumGate>
+          <button 
+            onClick={() => setShowFriendLimit(false)}
+            className="w-full text-muted text-xs py-2 mt-2"
+          >
+            Annuler
+          </button>
+        </div>
+      )}
 
       {showSearch && (
         <div className="space-y-4 animate-in zoom-in-95 duration-300">
@@ -352,7 +381,7 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
                 <p className="text-[10px] text-gold/60 uppercase tracking-widest">@{result.username} · {result.signe_solaire}</p>
               </div>
               <div className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-colors ${result.isFriend ? 'bg-green-500/10 text-green-400 border border-green-500/20' : result.isPending ? 'bg-gold/5 text-gold/50 border border-gold/10' : invitationStatus === 'success' ? 'bg-green-500 text-white' : 'bg-gold/10 text-gold border border-gold/20'}`}>
-                {result.isFriend ? 'Ami' : result.isPending ? 'En attente' : invitationStatus === 'success' ? 'Envoyé' : 'Inviter'}
+                {result.isFriend ? 'Ami' : result.isPending ? 'En attente' : invitationStatus === 'success' ? 'Envoyé ✓' : invitationStatus === 'limit' ? 'Limite ✦' : 'Inviter'}
               </div>
             </Card>
           ))}
