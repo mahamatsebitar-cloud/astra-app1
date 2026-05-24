@@ -38,8 +38,8 @@ const TAB_SCREENS = ['home', 'natal', 'horoscope', 'compat', 'profil', 'noeud_lu
 // ─── SCREENS QUI SONT DES "PUSH" (stack) ───
 const STACK_SCREENS = ['horoscope', 'noeud_lunaire', 'abonnement'];
 
-// ─── SCREENS OÙ LE BOUTON RETOUR QUITTE L'APP ───
-const EXIT_SCREENS = ['login', 'home', 'splash'];
+// ─── SCREENS OÙ LE BOUTON RETOUR QUITTE L'APP (racine de l'app) ───
+const EXIT_SCREENS = ['splash', 'home'];
 
 const AppContent = () => {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
@@ -170,9 +170,15 @@ const AppContent = () => {
     if (!Capacitor.isNativePlatform()) return;
 
     const handleBackButton = async () => {
-      // 🔴 SCREENS OÙ ON QUITTE L'APP DIRECTEMENT
+      // 🔴 SCREENS RACINE : quitte l'app directement
       if (EXIT_SCREENS.includes(currentScreen)) {
         CapacitorApp.exitApp();
+        return;
+      }
+
+      // 🔙 LOGIN → retour au splash (pas quitter l'app)
+      if (currentScreen === 'login') {
+        setCurrentScreen('splash');
         return;
       }
 
@@ -182,16 +188,12 @@ const AppContent = () => {
         return;
       }
       
-      // 🔙 AUTRES SCREENS (tabs) → retour à home
+      // 🔙 AUTRES SCREENS (tabs natal/compat/profil) → retour à home
       if (!STACK_SCREENS.includes(currentScreen) && currentScreen !== 'home') {
         setCurrentScreen('home');
         setActiveTab('home');
         return;
       }
-
-      // Si on est sur home et qu'on arrive ici (ne devrait pas arriver car EXIT_SCREENS)
-      // Mais sécurité supplémentaire
-      CapacitorApp.exitApp();
     };
 
     CapacitorApp.addListener('backButton', handleBackButton);
