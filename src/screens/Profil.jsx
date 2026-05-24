@@ -38,14 +38,6 @@ const getTitreProfil = (signe, nom) => {
   return TITRES_PROFIL[signe]?.[genre] || TITRES_PROFIL["Verseau"][genre];
 };
 
-// ─── ICÔNE CAMÉRA SVG (style Astra) ───
-const CameraIcon = ({ size = 14, color = "#C9A460" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-    <circle cx="12" cy="13" r="4" />
-  </svg>
-);
-
 const Profil = ({ onLogout, onNavigate }) => {
   const { user } = useAuthContext();
   const { profile, loading, refreshProfile } = useProfile(user?.id);
@@ -59,7 +51,6 @@ const Profil = ({ onLogout, onNavigate }) => {
   const [notifStatus, setNotifStatus] = useState(null);
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [isTogglingNotif, setIsTogglingNotif] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
 
   // ─── TOUS LES useEffect ICI ───
@@ -161,51 +152,6 @@ const Profil = ({ onLogout, onNavigate }) => {
     }
   };
 
-    // ─── UPLOAD PHOTO DE PROFIL ───
-    const handleUploadPhoto = async (e) => {
-      const file = e.target.files?.[0];
-      if (!file || !user?.id) return;
-      
-      if (!file.type.startsWith('image/')) return;
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Photo trop lourde (max 5MB)');
-        return;
-      }
-  
-      setUploadingPhoto(true);
-      try {
-        const ext = file.name.split('.').pop();
-        const path = `${user.id}/avatar.${ext}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(path, file, { upsert: true });
-  
-        if (uploadError) throw uploadError;
-  
-        const { data: urlData } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(path);
-  
-        const avatarUrl = urlData.publicUrl;
-  
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ avatar_url: avatarUrl })
-          .eq('id', user.id);
-  
-        if (updateError) throw updateError;
-  
-        await refreshProfile();
-        
-      } catch (err) {
-        console.error('Upload error:', err);
-        alert('Erreur lors de l\'upload');
-      } finally {
-        setUploadingPhoto(false);
-      }
-    };
-
   const handleLogout = async () => {
     if (await logout() && onLogout) onLogout();
   };
@@ -275,54 +221,14 @@ const Profil = ({ onLogout, onNavigate }) => {
         </button>
       </div>
 
-      {/* ━━━ SECTION AVATAR MODIFIÉE ━━━ */}
+      {/* ━━━ SECTION AVATAR SIMPLIFIÉE ━━━ */}
       <section className="flex flex-col items-center py-4">
-        <div className="relative group">
+        <div className="relative">
           
-          {/* Cercle principal */}
-          <div className="w-32 h-32 bg-[#141731] border-2 border-gold/20 rounded-full flex items-center justify-center shadow-2xl overflow-hidden transition-transform duration-500 group-hover:scale-105 relative">
-            {profile?.avatar_url ? (
-              <img 
-                src={profile.avatar_url} 
-                alt={displayNom} 
-                className="w-full h-full object-cover" 
-              />
-            ) : (
-              <div className="flex items-center justify-center">
-                <ZodiacSymbol signe={signeSolaire} size={48} color="#C9A460" />
-              </div>
-            )}
-            
-            {/* Overlay chargement */}
-            {uploadingPhoto && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
-                <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
+          {/* Cercle principal avec symbole zodiacal fixe */}
+          <div className="w-32 h-32 bg-[#141731] border-2 border-gold/20 rounded-full flex items-center justify-center shadow-2xl overflow-hidden">
+            <ZodiacSymbol signe={signeSolaire} size={48} color="#C9A460" />
           </div>
-
-          {/* Badge signe zodiacal — UNIQUEMENT si photo uploadée */}
-          {profile?.avatar_url && (
-            <div className="absolute -bottom-1 -right-1 bg-night border border-gold/40 w-9 h-9 rounded-full flex items-center justify-center shadow-lg">
-              <ZodiacSymbol signe={signeSolaire} size={16} color="#C9A460" />
-            </div>
-          )}
-
-          {/* Bouton caméra pour upload */}
-          <label 
-            htmlFor="avatar-upload"
-            className={`absolute bottom-0 left-0 w-8 h-8 rounded-full bg-[#141731] border border-gold/30 flex items-center justify-center hover:bg-gold/10 transition-all active:scale-95 ${uploadingPhoto ? 'opacity-50' : ''}`}
-            style={{ cursor: uploadingPhoto ? 'default' : 'pointer' }}
-          >
-            <CameraIcon size={12} color="#C9A460" />
-          </label>
-          <input 
-            id="avatar-upload"
-            type="file" 
-            accept="image/*"
-            className="hidden"
-            onChange={handleUploadPhoto}
-          />
 
         </div>
 

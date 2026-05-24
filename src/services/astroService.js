@@ -116,7 +116,14 @@ export const getThemeNatal = (dateStr, heureStr, lat = 48.8566, lng = 2.3522) =>
   try {
     const [y, m, d] = dateStr.split('-').map(Number);
     const [h, min] = (heureStr || '12:00').split(':').map(Number);
-    const date = new Date(y, m - 1, d, h, min, 0);
+    // On traite l'heure saisie comme heure locale française
+    // et on soustrait l'offset UTC+1 (hiver) ou UTC+2 (été)
+    const dateTemp = new Date(y, m - 1, d, h, min, 0);
+    const mois = m; // 1-12
+    // Heure d'été en France : dernier dimanche mars → dernier dimanche octobre
+    const heureEte = mois > 3 && mois < 10;
+    const offsetMinutes = heureEte ? 120 : 60; // UTC+2 été, UTC+1 hiver
+    const date = new Date(Date.UTC(y, m - 1, d, h, min, 0) - offsetMinutes * 60000);
 
     const result = ephemeris.getAllPlanets(date, lng, lat, 0);
     const planets = result.observed;
@@ -193,10 +200,10 @@ const getSigneSolaireFallback = (dateStr) => {
   return "Poissons";
 };
 
-export const getSigneSolaire = (dateStr) => {
+export const getSigneSolaire = (dateStr, heureStr = '12:00') => {
   if (!dateStr) return "Bélier";
   try {
-    const theme = getThemeNatal(dateStr, '12:00');
+    const theme = getThemeNatal(dateStr, heureStr);
     return theme?.soleil?.signe || getSigneSolaireFallback(dateStr);
   } catch {
     return getSigneSolaireFallback(dateStr);
@@ -205,27 +212,67 @@ export const getSigneSolaire = (dateStr) => {
 
 // ━━━ 3. SIGNE LUNAIRE ET ASCENDANT ━━━
 
-export const getSigneLunaire = (dateStr) => {
+export const getSigneLunaire = (dateStr, heureStr = '12:00') => {
   if (!dateStr) return "Taureau";
   try {
-    const theme = getThemeNatal(dateStr, '12:00');
+    const theme = getThemeNatal(dateStr, heureStr);
     return theme?.lune?.signe || "Taureau";
   } catch {
     return "Taureau";
   }
 };
 
-export const getAscendant = (heureStr) => {
+export const getAscendant = (heureStr, lat = 48.8566, lng = 2.3522, dateStr = null) => {
   if (!heureStr) return "Lion";
-  const [h, m] = heureStr.split(':').map(Number);
-  const heureDecimale = h + m / 60;
-  const index = Math.floor(heureDecimale / 2) % 12;
-  const signes = [
-    "Balance", "Scorpion", "Sagittaire", "Capricorne",
-    "Verseau", "Poissons", "Bélier", "Taureau",
-    "Gémeaux", "Cancer", "Lion", "Vierge"
-  ];
-  return signes[index];
+  try {
+    // Utilise ephemeris pour calculer l'ascendant réel
+    const dateBase = dateStr || new Date().toISOString().split('T')[0];
+    const [y, mo, d] = dateBase.split('-').map(Number);
+    const [h, min] = heureStr.split(':').map(Number);
+    // On traite l'heure saisie comme heure locale française
+    // et on soustrait l'offset UTC+1 (hiver) ou UTC+2 (été)
+    const mois = mo;
+    // Heure d'été en France : dernier dimanche mars → dernier dimanche octobre
+    const heureEte = mois > 3 && mois < 10;
+    const offsetMinutes = heureEte ? 120 : 60; // UTC+2 été, UTC+1 hiver
+    const date = new Date(Date.UTC(y, mo - 1, d, h, min, 0) - offsetMinutes * 60000);
+
+    const result = ephemeris.getAllPlanets(date, lng, lat, 0);
+
+    // L'ascendant = point de l'écliptique qui se lève à l'Est
+    // Calculé via le temps sidéral local et la latitude
+    const lst = result.observed?.sun?.apparentLongitudeDd;
+
+    // Formule ascendant via temps sidéral local
+    const jd = date.getTime() / 86400000 + 2440587.5;
+    const T = (jd - 2451545.0) / 36525;
+    const GMST = 280.46061837 + 360.98564736629 * (jd - 2451545.0)
+                 + 0.000387933 * T * T - T * T * T / 38710000;
+    const LMST = ((GMST + lng) % 360 + 360) % 360;
+    const latRad = lat * Math.PI / 180;
+    const E = 23.4392911; // obliquité écliptique
+    const ERad = E * Math.PI / 180;
+    const LMSTRad = LMST * Math.PI / 180;
+
+    const ascRad = Math.atan2(
+      Math.cos(LMSTRad),
+      -(Math.sin(LMSTRad) * Math.cos(ERad) + Math.tan(latRad) * Math.sin(ERad))
+    );
+    const ascDeg = ((ascRad * 180 / Math.PI) + 360) % 360;
+
+    return degreesToSigne(ascDeg).signe;
+  } catch (e) {
+    // Fallback : approximation par heure (meilleur que rien)
+    const [h, m] = heureStr.split(':').map(Number);
+    const heureDecimale = h + m / 60;
+    const index = Math.floor(heureDecimale / 2) % 12;
+    const signes = [
+      "Balance", "Scorpion", "Sagittaire", "Capricorne",
+      "Verseau", "Poissons", "Bélier", "Taureau",
+      "Gémeaux", "Cancer", "Lion", "Vierge"
+    ];
+    return signes[index];
+  }
 };
 
 // ━━━ 4. PLANÈTES DU JOUR (MODIFIÉ pour accepter targetDate) ━━━

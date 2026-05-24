@@ -1,5 +1,5 @@
 // src/screens/Onboarding3.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from "../components/ui/Button";
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
@@ -14,18 +14,50 @@ const Onboarding3 = ({ onFinish, dateNaissance, heure }) => {
   const { refreshProfile } = useProfileContext();
   const [isLoading, setIsLoading] = useState(false);
   
-  const [query, setQuery] = useState('');
-  const [selectedCity, setSelectedCity] = useState(null);
+  // ─── RECHERCHE VILLE NOMINATIM ───
+  const [villeQuery, setVilleQuery] = useState('');
+  const [villeSuggestions, setVilleSuggestions] = useState([]);
+  const [villeLoading, setVilleLoading] = useState(false);
+  const [villeSelectionnee, setVilleSelectionnee] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const suggestions = [
-    { city: 'Paris', region: 'Île-de-France, France', coords: "48.8566, 2.3522" },
-    { city: 'Lyon', region: 'Auvergne-Rhône-Alpes, France', coords: "45.7640, 4.8357" },
-    { city: 'Marseille', region: 'Provence-Alpes-Côte d\'Azur, France', coords: "43.2965, 5.3698" },
-  ];
+  useEffect(() => {
+    if (villeQuery.length < 2) {
+      setVilleSuggestions([]);
+      setDropdownOpen(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setVilleLoading(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(villeQuery)}&format=json&addressdetails=1&limit=6&countrycodes=fr&accept-language=fr`,
+          { headers: { 'Accept-Language': 'fr' } }
+        );
+        const data = await res.json();
+        const villes = data
+          .filter(r => r.class === 'place' || r.class === 'boundary')
+          .map(r => ({
+            label: r.display_name.split(',').slice(0, 2).join(',').trim(),
+            lat: parseFloat(r.lat),
+            lng: parseFloat(r.lon)
+          }));
+        setVilleSuggestions(villes);
+        setDropdownOpen(villes.length > 0);
+      } catch (e) {
+        console.error('Nominatim error:', e);
+      } finally {
+        setVilleLoading(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [villeQuery]);
 
-  const handleSelect = (city) => {
-    setSelectedCity(city);
-    setQuery(city.city);
+  const handleSelectVille = (ville) => {
+    setVilleSelectionnee(ville);
+    setVilleQuery(ville.label);
+    setVilleSuggestions([]);
+    setDropdownOpen(false);
   };
 
   const handleFinalize = async () => {
@@ -43,24 +75,26 @@ const Onboarding3 = ({ onFinish, dateNaissance, heure }) => {
       return;
     }
 
-    if (!selectedCity) {
-      alert("Veuillez sélectionner votre ville.");
-      return;
-    }
+    // Fallback Paris si rien n'est sélectionné
+    const finalVille = villeSelectionnee || {
+      label: 'Paris, France',
+      lat: 48.8566,
+      lng: 2.3522
+    };
 
     setIsLoading(true);
 
-    const lat = parseFloat(selectedCity.coords.split(',')[0]) || 48.8566;
-    const signeSolaire = getSigneSolaire(dateNaissance);
-    const signeLunaire = getSigneLunaire(dateNaissance);
-    const ascendant = getAscendant(heure || '12:00', lat);
+    const signeSolaire = getSigneSolaire(dateNaissance, heure || '12:00');
+    const signeLunaire = getSigneLunaire(dateNaissance, heure || '12:00');
+    const ascendant = getAscendant(heure || '12:00', finalVille.lat, finalVille.lng, dateNaissance);
 
     const profileData = {
       nom: user?.user_metadata?.nom || "Voyageur",
       date_naissance: dateNaissance || '1995-01-01',
       heure_naissance: heure || '12:00',
-      lieu_naissance: selectedCity.city,
-      latitude: lat,
+      lieu_naissance: finalVille.label,
+      latitude: finalVille.lat,
+      longitude: finalVille.lng,
       signe_solaire: signeSolaire,
       signe_lunaire: signeLunaire,
       ascendant: ascendant,
@@ -92,6 +126,8 @@ const Onboarding3 = ({ onFinish, dateNaissance, heure }) => {
     }
   };
 
+  const canProceed = villeSelectionnee !== null || villeQuery.length > 0;
+
   return (
     <div className="flex flex-col items-center min-h-[400px] justify-between">
       <div className="w-full">
@@ -106,29 +142,41 @@ const Onboarding3 = ({ onFinish, dateNaissance, heure }) => {
         </h1>
         
         <div className="w-full relative px-4 mt-6">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSelectedCity(null);
-            }}
-            placeholder="Ville de naissance..."
-            className="bg-[#141731] border border-gold/10 text-cream p-4 rounded-2xl w-full text-sm outline-none focus:border-gold/40 transition-all shadow-inner"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={villeQuery}
+              onChange={(e) => {
+                setVilleQuery(e.target.value);
+                setVilleSelectionnee(null);
+              }}
+              placeholder="Ville de naissance..."
+              className="bg-[#141731] border border-gold/10 text-cream p-4 rounded-2xl w-full text-sm outline-none focus:border-gold/40 transition-all shadow-inner pr-10"
+            />
+            {villeLoading && (
+              <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                <div className="w-4 h-4 border-2 border-gold/20 border-t-gold rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
 
-          {query.length > 0 && !selectedCity && (
+          {dropdownOpen && villeSuggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-[#0E1228] border border-gold/10 rounded-2xl overflow-hidden z-20 shadow-2xl mx-4 animate-in fade-in slide-in-from-top-2">
-              {suggestions.map((item) => (
+              {villeSuggestions.map((ville, idx) => (
                 <div
-                  key={item.city}
-                  onClick={() => handleSelect(item)}
-                  className="flex flex-col p-4 cursor-pointer hover:bg-gold/10 border-b border-white/5 last:border-0"
+                  key={idx}
+                  onClick={() => handleSelectVille(ville)}
+                  className="py-3 px-4 cursor-pointer hover:bg-[#1a1f3a] border-b border-white/5 last:border-0"
                 >
-                  <span className="text-cream text-sm font-medium">{item.city}</span>
-                  <span className="text-muted text-[10px] uppercase tracking-widest">{item.region}</span>
+                  <span className="text-cream text-sm font-medium">{ville.label}</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {villeQuery.length >= 2 && !villeLoading && villeSuggestions.length === 0 && villeSelectionnee === null && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-[#0E1228] border border-gold/10 rounded-2xl py-3 px-4 mx-4">
+              <span className="text-muted text-sm">Aucune ville trouvée</span>
             </div>
           )}
         </div>
@@ -137,9 +185,9 @@ const Onboarding3 = ({ onFinish, dateNaissance, heure }) => {
       <div className="w-full mt-10 px-4 mb-6">
         <Button
           onClick={handleFinalize}
-          disabled={!selectedCity || isLoading}
+          disabled={!canProceed || isLoading}
           variant="primary"
-          className={`w-full py-5 ${!selectedCity ? "opacity-30 grayscale" : "animate-glow shadow-[0_0_20px_rgba(212,175,55,0.2)]"}`}
+          className={`w-full py-5 ${!canProceed ? "opacity-30 grayscale" : "animate-glow shadow-[0_0_20px_rgba(212,175,55,0.2)]"}`}
         >
           {isLoading ? "Alignement des astres..." : "Révéler mon thème ✦"}
         </Button>
