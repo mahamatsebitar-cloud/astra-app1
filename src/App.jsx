@@ -305,6 +305,13 @@ const AppContent = () => {
     return <div className="h-screen w-screen bg-[#06081A]" />;
   }
 
+  // Si authentifié avec profil mais encore sur splash → écran noir
+  if (isAuthenticated && profile && 
+      (profile.onboarding_completed || profile.signe_solaire) && 
+      currentScreen === 'splash') {
+    return <div className="h-screen w-screen bg-[#06081A]" />;
+  }
+
   const renderScreen = () => {
     switch (currentScreen) {
       case 'splash':
