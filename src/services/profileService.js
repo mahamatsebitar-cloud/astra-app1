@@ -30,6 +30,9 @@ export async function getProfile(userId) {
       .single();
 
     if (error) throw error;
+    // Si data est null sans erreur → profil pas encore accessible
+    // (timing Supabase au démarrage) → on traite comme erreur retriable
+    if (!data) throw new Error('PROFILE_NOT_FOUND');
 
     return { data, error: null };
   } catch (error) {

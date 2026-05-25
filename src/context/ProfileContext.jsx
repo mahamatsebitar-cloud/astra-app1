@@ -38,8 +38,10 @@ export function ProfileProvider({ children }) {
   }, [user?.id]);
 
   useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+    if (user?.id) {
+      fetchProfile();
+    }
+  }, [user?.id]); // Écouter user?.id directement, pas fetchProfile
 
   const updateProfileGlobal = useCallback(async (updates) => {
     if (!user?.id) return { error: 'No user' };

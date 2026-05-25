@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 const CONSENT_KEY = 'astra_consent_v1';
 
-export default function ConsentBanner({ onShowPolicy }) {
+export default function ConsentBanner({ onShowPolicy, currentScreen }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -28,6 +28,7 @@ export default function ConsentBanner({ onShowPolicy }) {
     document.body.style.overflow = 'unset';
   };
 
+  if (currentScreen === 'politique_confidentialite') return null;
   if (!visible) return null;
 
   return (

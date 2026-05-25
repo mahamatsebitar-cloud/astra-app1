@@ -10,6 +10,7 @@ import ConsentBanner from './components/ui/ConsentBanner';
 import { findUserByShareToken, sendFriendRequest } from './services/friendService';
 import { initPushNotifications, getPendingDeepLink } from './lib/notifications';
 import { NotificationToast } from './components/NotificationToast';
+import PolitiqueConfidentialite from './screens/legal/PolitiqueConfidentialite';
 
 // Screens
 import Splash from './screens/Splash';
@@ -61,6 +62,7 @@ const AppContent = () => {
 
   const scrollRef = useRef(null);
   const [isInOnboarding, setIsInOnboarding] = useState(false);
+  const [showingPolicy, setShowingPolicy] = useState(false);
 
   // ━━━ GESTION LIEN DE PARTAGE /invite/TOKEN ━━━
   useEffect(() => {
@@ -305,13 +307,6 @@ const AppContent = () => {
     return <div className="h-screen w-screen bg-[#06081A]" />;
   }
 
-  // Si authentifié avec profil mais encore sur splash → écran noir
-  if (isAuthenticated && profile && 
-      (profile.onboarding_completed || profile.signe_solaire) && 
-      currentScreen === 'splash') {
-    return <div className="h-screen w-screen bg-[#06081A]" />;
-  }
-
   const renderScreen = () => {
     switch (currentScreen) {
       case 'splash':
@@ -356,6 +351,11 @@ const AppContent = () => {
         return <Profil onLogout={() => setCurrentScreen('splash')} onNavigate={(screen) => screen === 'abonnement' && handlePushScreen('abonnement')} />;
       case 'abonnement':
         return <Abonnement onBack={handlePopScreen} onSubscribed={() => setCurrentScreen('home')} />;
+      case 'politique_confidentialite':
+        return <PolitiqueConfidentialite onBack={() => {
+          setShowingPolicy(false);
+          handlePopScreen();
+        }} />;
       default:
         return <Home onHoroscope={() => handlePushScreen('horoscope')} onProfil={() => handleTabChange('profil')} />;
     }
@@ -488,7 +488,14 @@ const AppContent = () => {
         </nav>
       )}
 
-      <ConsentBanner />
+      <ConsentBanner 
+        onShowPolicy={() => {
+          setShowingPolicy(true);
+          setPreviousScreen(currentScreen);
+          setCurrentScreen('politique_confidentialite');
+        }}
+        currentScreen={currentScreen}
+      />
     </div>
   );
 };
