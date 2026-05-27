@@ -13,7 +13,7 @@ const FEATURES = [
   'Nœuds lunaires & chemin karmique',
   'Compatibilité astrologique avancée',
   'Transits planétaires personnels',
-  'Expérience sans publicité'
+  'Connexions illimitées'
 ];
 
 export default function Abonnement({ onBack, onSubscribed }) {

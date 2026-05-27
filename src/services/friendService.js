@@ -1,6 +1,7 @@
 // src/services/friendService.js
 import { supabase } from '../lib/supabase';
 import { notifySocialEvent } from './notificationService';
+import { hasFeatureAccess } from './subscriptionService';
 
 // ━━━ 1. RECHERCHE (par email OU username) ━━━
 export const searchUser = async (query, currentUserId) => {
@@ -84,24 +85,17 @@ export const sendFriendRequest = async (senderId, receiverId) => {
       }
     }
 
-    // ─── VÉRIFICATION LIMITE FREE (1 ami max) ───
-    // On vérifie le nombre d'amis acceptés du sender
+    // ─── VÉRIFICATION LIMITE (1 ami max pour non-premium) ───
     const { data: friendsCount } = await supabase
       .from('friendships')
       .select('id', { count: 'exact' })
       .or(`sender_id.eq.${senderId},receiver_id.eq.${senderId}`)
       .eq('status', 'accepted');
 
-    const { data: senderSubscription } = await supabase
-      .from('subscriptions')
-      .select('status, plan')
-      .eq('user_id', senderId)
-      .single();
+    // NOUVEAU : check via premium_features au lieu du statut subscription
+    const hasUnlimitedFriends = await hasFeatureAccess(senderId, 'connexions_illimitees');
 
-    const isPremium = senderSubscription?.status === 'active' 
-      && senderSubscription?.plan !== 'free';
-
-    if (!isPremium && (friendsCount?.length || 0) >= 1) {
+    if (!hasUnlimitedFriends && (friendsCount?.length || 0) >= 1) {
       return { 
         data: null, 
         error: 'LIMIT_REACHED',
