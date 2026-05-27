@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useSubscription } from '../hooks/useSubscription';
 
-// Configuration des prix pour maintenance facile
 const PLANS = {
   mensuel: { id: 'etoile_mensuel', price: '9,99 €', period: '/mois', billing: 'mensuel' },
   annuel: { id: 'etoile_annuel', price: '79,99 €', period: '/an', billing: 'annuel', savings: '–33%', detail: 'soit 6,67€/mois' }
@@ -32,24 +31,34 @@ export default function Abonnement({ onBack, onSubscribed }) {
   } = useSubscription();
 
   const handleAction = useCallback(async () => {
+    console.log('[Abonnement] handleAction called');
     setIsProcessing(true);
     setLocalError(null);
     
     try {
+      console.log('[Abonnement] Calling startTrial...');
       const result = await startTrial();
+      console.log('[Abonnement] startTrial result:', result);
       
-      if (result?.error) throw new Error(result.error);
+      if (result?.error) {
+        console.error('[Abonnement] startTrial returned error:', result.error);
+        const errorMsg = typeof result.error === 'object' 
+          ? JSON.stringify(result.error) 
+          : String(result.error);
+        throw new Error(errorMsg);
+      }
       
+      console.log('[Abonnement] Trial started successfully');
       if (onSubscribed) onSubscribed();
     } catch (err) {
-      setLocalError("Impossible d'activer l'essai. Vérifiez votre connexion.");
-      console.error("Subscription Error:", err);
+      const errorMessage = err?.message || err?.error?.message || JSON.stringify(err);
+      console.error('[Abonnement] Subscription Error:', err);
+      setLocalError("Impossible d'activer l'essai : " + errorMessage);
     } finally {
       setIsProcessing(false);
     }
   }, [startTrial, onSubscribed]);
 
-  // État de chargement initial du Hook
   if (subLoading) {
     return (
       <div className="min-h-screen bg-night flex items-center justify-center">
@@ -60,31 +69,19 @@ export default function Abonnement({ onBack, onSubscribed }) {
 
   return (
     <div className="min-h-screen bg-night flex flex-col max-w-[360px] mx-auto overflow-x-hidden text-cream">
-      
-      {/* Header fixe */}
       <header className="sticky top-0 z-20 bg-night/90 backdrop-blur-md px-6 py-4 border-b border-white/5">
-        <button
-          onClick={onBack}
-          className="text-muted text-xs mb-3 flex items-center gap-1 hover:text-gold transition-colors"
-        >
+        <button onClick={onBack} className="text-muted text-xs mb-3 flex items-center gap-1 hover:text-gold transition-colors">
           <span className="text-lg">←</span> Retour
         </button>
-        <h1 className="text-[10px] text-gold tracking-[3px] uppercase font-bold">
-          Astra Étoile
-        </h1>
+        <h1 className="text-[10px] text-gold tracking-[3px] uppercase font-bold">Astra Étoile</h1>
       </header>
 
       <main className="flex-1 px-6 pt-6 pb-24 space-y-8 overflow-y-auto">
-        
-        {/* Hero Card avec effet Shimmer */}
         <section className="relative overflow-hidden bg-gradient-to-br from-[#120E22] to-[#1C2040] border border-gold/20 rounded-[32px] p-8 text-center shadow-2xl">
           <div className="absolute top-0 left-0 w-full h-full bg-shimmer pointer-events-none opacity-10"></div>
           <div className="text-gold text-5xl font-serif mb-4 animate-pulse">✦</div>
           <h2 className="font-serif text-2xl mb-1">Astra Étoile</h2>
-          <p className="text-gold/60 text-xs italic font-serif mb-8 italic">
-            « Explorez les profondeurs de votre destin »
-          </p>
-          
+          <p className="text-gold/60 text-xs italic font-serif mb-8">« Explorez les profondeurs de votre destin »</p>
           <ul className="space-y-4 text-left">
             {FEATURES.map((feature, index) => (
               <li key={index} className="flex items-start gap-3">
@@ -97,28 +94,19 @@ export default function Abonnement({ onBack, onSubscribed }) {
           </ul>
         </section>
 
-        {/* Sélecteur de plan (si non Premium) */}
         {(isFree || isTrial) && (
           <section className="space-y-4">
-            <h3 className="text-muted text-[10px] tracking-widest uppercase pl-1">
-              Choisir une constellation
-            </h3>
-            
+            <h3 className="text-muted text-[10px] tracking-widest uppercase pl-1">Choisir une constellation</h3>
             <div className="grid grid-cols-2 gap-4">
               {Object.entries(PLANS).map(([key, plan]) => (
-                <button
-                  key={key}
-                  onClick={() => setPlanKey(key)}
+                <button key={key} onClick={() => setPlanKey(key)}
                   className={`relative flex flex-col p-5 rounded-2xl border transition-all duration-300 text-left ${
                     planKey === key 
                       ? 'border-gold bg-gold/5 shadow-[0_0_20px_rgba(201,164,96,0.15)]' 
                       : 'border-white/10 bg-white/5 opacity-60'
-                  }`}
-                >
+                  }`}>
                   {plan.savings && (
-                    <span className="absolute -top-2.5 right-3 bg-gold text-night text-[10px] px-2 py-0.5 rounded-full font-bold">
-                      {plan.savings}
-                    </span>
+                    <span className="absolute -top-2.5 right-3 bg-gold text-night text-[10px] px-2 py-0.5 rounded-full font-bold">{plan.savings}</span>
                   )}
                   <span className="text-xs mb-1 font-medium">{plan.billing}</span>
                   <span className="text-xl font-serif">{plan.price}</span>
@@ -130,17 +118,13 @@ export default function Abonnement({ onBack, onSubscribed }) {
           </section>
         )}
 
-        {/* Action Button & Feedback */}
         <section className="space-y-4">
           {localError && <p className="text-red-400 text-[10px] text-center bg-red-400/10 py-2 rounded-lg">{localError}</p>}
 
           {isFree && (
             <>
-              <button
-                onClick={handleAction}
-                disabled={isProcessing}
-                className="w-full bg-gold hover:bg-gold-light text-night font-serif font-bold rounded-full py-4 text-sm transition-all shadow-lg shadow-gold/20 active:scale-95 disabled:opacity-50"
-              >
+              <button onClick={handleAction} disabled={isProcessing}
+                className="w-full bg-gold hover:bg-gold-light text-night font-serif font-bold rounded-full py-4 text-sm transition-all shadow-lg shadow-gold/20 active:scale-95 disabled:opacity-50">
                 {isProcessing ? 'Connexion aux astres...' : 'Essayer 7 jours gratuits'}
               </button>
               <p className="text-muted text-[10px] text-center">
@@ -175,18 +159,17 @@ export default function Abonnement({ onBack, onSubscribed }) {
           )}
         </section>
 
-        {/* Trust Badges */}
         <footer className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5">
-           {[
-             { label: 'Annulation facile', icon: '🔓' },
-             { label: 'Données protégées', icon: '🛡️' },
-             { label: 'Paiement sécurisé', icon: '💳' }
-           ].map((badge, i) => (
-             <div key={i} className="text-center space-y-1">
-               <span className="text-lg opacity-50">{badge.icon}</span>
-               <p className="text-muted text-[8px] uppercase tracking-tighter leading-tight font-bold">{badge.label}</p>
-             </div>
-           ))}
+          {[
+            { label: 'Annulation facile', icon: '🔓' },
+            { label: 'Données protégées', icon: '🛡️' },
+            { label: 'Paiement sécurisé', icon: '💳' }
+          ].map((badge, i) => (
+            <div key={i} className="text-center space-y-1">
+              <span className="text-lg opacity-50">{badge.icon}</span>
+              <p className="text-muted text-[8px] uppercase tracking-tighter leading-tight font-bold">{badge.label}</p>
+            </div>
+          ))}
         </footer>
       </main>
     </div>

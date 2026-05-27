@@ -304,7 +304,16 @@ const AppContent = () => {
   };
 
   if (authLoading || profileLoading) {
-    return <div className="h-screen w-screen bg-[#06081A]" />;
+    return (
+      <div className="h-screen w-screen bg-night flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-2 border-gold/20 border-t-gold rounded-full animate-spin" />
+          <div className="text-gold font-serif italic animate-pulse tracking-[0.2em] text-[10px] uppercase">
+            Consultation des éphémérides
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const renderScreen = () => {

@@ -55,29 +55,57 @@ export async function startTrial(userId) {
   const trialEnd = new Date();
   trialEnd.setDate(trialEnd.getDate() + 7);
 
-  const { data, error } = await supabase
+  // Vérifie si une souscription existe déjà
+  const { data: existing } = await supabase
     .from('subscriptions')
-    .upsert({
-      user_id: userId,
-      status: 'trial',
-      plan: 'etoile_mensuel',
-      trial_ends_at: trialEnd.toISOString(),
-      current_period_end: trialEnd.toISOString(),
-      platform: 'android'
-    })
-    .select()
-    .single();
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
 
-  if (!error) {
-    await supabase.from('transactions').insert({
-      user_id: userId,
-      type: 'trial_start',
-      amount_cents: 0,
-      platform: 'android'
-    });
+  let result;
+  
+  if (existing) {
+    // Met à jour la ligne existante
+    result = await supabase
+      .from('subscriptions')
+      .update({
+        status: 'trial',
+        plan: 'etoile_mensuel',
+        trial_ends_at: trialEnd.toISOString(),
+        current_period_end: trialEnd.toISOString(),
+        platform: 'android'
+      })
+      .eq('user_id', userId)
+      .select()
+      .single();
+  } else {
+    // Crée une nouvelle ligne
+    result = await supabase
+      .from('subscriptions')
+      .insert({
+        user_id: userId,
+        status: 'trial',
+        plan: 'etoile_mensuel',
+        trial_ends_at: trialEnd.toISOString(),
+        current_period_end: trialEnd.toISOString(),
+        platform: 'android'
+      })
+      .select()
+      .single();
   }
 
-  return { data, error };
+  if (result.error) {
+    return { data: null, error: result.error };
+  }
+
+  await supabase.from('transactions').insert({
+    user_id: userId,
+    type: 'trial_start',
+    amount_cents: 0,
+    platform: 'android'
+  });
+
+  return { data: result.data, error: null };
 }
 
 export async function cancelSubscription(userId) {
@@ -110,22 +138,45 @@ export async function cancelSubscription(userId) {
 export async function activateGooglePlaySubscription(userId, purchaseToken) {
   try {
     const expiryDate = new Date();
-    expiryDate.setMonth(expiryDate.getMonth() + 1); // Simulation 1 mois
+    expiryDate.setMonth(expiryDate.getMonth() + 1);
 
-    const { data, error } = await supabase
+    const { data: existing } = await supabase
       .from('subscriptions')
-      .upsert({
-        user_id: userId,
-        status: 'active',
-        plan: 'etoile_mensuel',
-        current_period_end: expiryDate.toISOString(),
-        platform: 'android',
-        external_id: purchaseToken
-      })
-      .select()
-      .single();
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-    return { data, isValid: isSubscriptionValid(data), error };
+    let result;
+
+    if (existing) {
+      result = await supabase
+        .from('subscriptions')
+        .update({
+          status: 'active',
+          plan: 'etoile_mensuel',
+          current_period_end: expiryDate.toISOString(),
+          platform: 'android',
+          external_id: purchaseToken
+        })
+        .eq('user_id', userId)
+        .select()
+        .single();
+    } else {
+      result = await supabase
+        .from('subscriptions')
+        .insert({
+          user_id: userId,
+          status: 'active',
+          plan: 'etoile_mensuel',
+          current_period_end: expiryDate.toISOString(),
+          platform: 'android',
+          external_id: purchaseToken
+        })
+        .select()
+        .single();
+    }
+
+    return { data: result.data, isValid: isSubscriptionValid(result.data), error: result.error };
   } catch (err) {
     return { data: null, error: err.message };
   }

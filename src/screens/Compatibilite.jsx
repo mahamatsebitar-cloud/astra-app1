@@ -9,6 +9,7 @@ import PremiumGate from '../components/ui/PremiumGate';
 import { useFriends } from '../hooks/useFriends';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
+import { useSubscription } from '../hooks/useSubscription';
 import { getHoroscopeComplet } from '../services/horoscopeService';
 
 const getScoreColor = (score) => {
@@ -42,6 +43,7 @@ const getTexteActivite = (activity) => {
 const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
   const { user } = useAuthContext();
   const { profile } = useProfile(user?.id);
+  const { isTrial, isActive } = useSubscription();
   const {
     friends,
     pendingRequests,
@@ -329,8 +331,9 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
           )}
         </div>
         <button onClick={() => {
-            // Si free et déjà 1 ami → afficher gate au lieu du search
-            if (!showSearch && friends.length >= 1) {
+            // Si free (pas trial, pas premium) et déjà 1 ami → afficher gate
+            const isFreeUser = !isTrial && !isActive;
+            if (!showSearch && isFreeUser && friends.length >= 1) {
               setShowFriendLimit(true);
               return;
             }
