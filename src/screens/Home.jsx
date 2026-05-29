@@ -14,8 +14,6 @@ import { LECTURES_MAISONS, SIGNIFICATIONS_MAISONS, getVariationMouvement } from 
 import { getSaintDuJour, getPhaseLunaire, getSaisonActuelle } from '../data/identiteFrancaise';
 import { supabase } from '../lib/supabase';
 
-// ... RESTE IDENTIQUE
-
 const SIGNES = [
   "Bélier", "Taureau", "Gémeaux", "Cancer",
   "Lion", "Vierge", "Balance", "Scorpion",
@@ -372,10 +370,11 @@ const Home = ({ onHoroscope, onProfil }) => {
         <span className="text-gold text-xl">→</span>
       </Card>
 
-            {/* Modal Planète avec animation fluide */}
-            <AnimatePresence>
+      {/* Modal Planète avec animation fluide */}
+      <AnimatePresence>
         {selectedPlanet && (
           <motion.div
+            data-planet-modal
             className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -458,7 +457,7 @@ const Home = ({ onHoroscope, onProfil }) => {
           </motion.div>
         )}
       </AnimatePresence>
-      </div>
+    </div>
   );
 };
 

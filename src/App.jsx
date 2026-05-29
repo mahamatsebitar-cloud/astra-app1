@@ -172,6 +172,14 @@ const AppContent = () => {
     if (!Capacitor.isNativePlatform()) return;
 
     const handleBackButton = async () => {
+      // 🔴 MODAL OUVERT → fermer le modal, ne pas quitter
+      const modalOpen = document.querySelector('[data-planet-modal]') || document.querySelector('[data-natal-modal]');
+      if (modalOpen) {
+        // Simuler un clic sur le fond pour fermer
+        modalOpen.click();
+        return;
+      }
+
       // 🔴 SCREENS RACINE : quitte l'app directement
       if (EXIT_SCREENS.includes(currentScreen)) {
         CapacitorApp.exitApp();
