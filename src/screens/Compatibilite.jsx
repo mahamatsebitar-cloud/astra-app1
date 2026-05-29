@@ -185,9 +185,9 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
     const tempsRelatif = getTempsRelatif(ami.last_seen_at);
 
     return (
-      <div ref={scrollRef} className="w-full space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 px-4">
+      <div ref={scrollRef} data-stack-view className="w-full space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 px-4">
         <div className="flex justify-between items-center pt-6">
-          <button onClick={() => setVue('detail')} className="text-muted text-xs uppercase tracking-widest flex items-center gap-2 active:opacity-50 font-bold">
+          <button data-stack-back onClick={() => setVue('detail')} className="text-muted text-xs uppercase tracking-widest flex items-center gap-2 active:opacity-50 font-bold">
             <span className="text-lg">←</span> Retour
           </button>
           <button onClick={() => { removeFriend(amiSelectionne.friendshipId); setVue('liste'); }} className="text-muted/30 hover:text-red-400 transition-colors text-sm">🗑</button>
@@ -245,8 +245,8 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
     const dash = (comp.global / 100) * circonference;
 
     return (
-      <div ref={scrollRef} className="w-full space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 px-4">
-        <button onClick={() => setVue('liste')} className="text-muted text-xs uppercase tracking-widest flex items-center gap-2 py-6 active:opacity-50 font-bold">
+      <div ref={scrollRef} data-stack-view className="w-full space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 px-4">
+        <button data-stack-back onClick={() => setVue('liste')} className="text-muted text-xs uppercase tracking-widest flex items-center gap-2 py-6 active:opacity-50 font-bold">
           <span className="text-lg">←</span> Retour aux alliances
         </button>
 
@@ -370,7 +370,7 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
       )}
 
       {showSearch && (
-        <div className="space-y-4 animate-in zoom-in-95 duration-300">
+        <div data-stack-view className="space-y-4 animate-in zoom-in-95 duration-300">
           <div className="relative group">
             <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Rechercher par @username ou email..."
@@ -399,6 +399,10 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
           {searchResults?.length === 0 && (
             <div className="text-center py-8"><p className="text-muted/40 font-serif italic text-sm">Aucun compte trouvé</p></div>
           )}
+
+          <button data-stack-back onClick={() => setShowSearch(false)} className="w-full text-muted text-xs py-2 mt-2 border border-white/10 rounded-full">
+            Annuler la recherche
+          </button>
         </div>
       )}
 

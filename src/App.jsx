@@ -172,12 +172,21 @@ const AppContent = () => {
     if (!Capacitor.isNativePlatform()) return;
 
     const handleBackButton = async () => {
-      // 🔴 MODAL OUVERT → fermer le modal, ne pas quitter
+      // 🔴 MODAL PLANÈTE / NATAL → fermer le modal
       const modalOpen = document.querySelector('[data-planet-modal]') || document.querySelector('[data-natal-modal]');
       if (modalOpen) {
-        // Simuler un clic sur le fond pour fermer
         modalOpen.click();
         return;
+      }
+
+      // 🔴 STACK VIEW INTERNE (Compatibilite/Profil) → retour interne
+      const stackView = document.querySelector('[data-stack-view]');
+      if (stackView) {
+        const backBtn = stackView.querySelector('[data-stack-back]');
+        if (backBtn) {
+          backBtn.click();
+          return;
+        }
       }
 
       // 🔴 SCREENS RACINE : quitte l'app directement

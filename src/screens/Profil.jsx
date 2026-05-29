@@ -191,23 +191,23 @@ const Profil = ({ onLogout, onNavigate }) => {
 
   // ─── RETURNS CONDITIONNELS ANIMÉS ───
   if (legalScreen === 'cgu') return (
-    <motion.div variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} className="h-full">
-      <CGU onBack={() => setLegalScreen(null)} />
+    <motion.div data-stack-view variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} className="h-full">
+      <CGU onBack={() => setLegalScreen(null)} data-stack-back />
     </motion.div>
   );
   if (legalScreen === 'confidentialite') return (
-    <motion.div variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} className="h-full">
-      <PolitiqueConfidentialite onBack={() => setLegalScreen(null)} />
+    <motion.div data-stack-view variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} className="h-full">
+      <PolitiqueConfidentialite onBack={() => setLegalScreen(null)} data-stack-back />
     </motion.div>
   );
   if (legalScreen === 'mentions') return (
-    <motion.div variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} className="h-full">
-      <MentionsLegales onBack={() => setLegalScreen(null)} />
+    <motion.div data-stack-view variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} className="h-full">
+      <MentionsLegales onBack={() => setLegalScreen(null)} data-stack-back />
     </motion.div>
   );
   if (isEditing) return (
-    <motion.div variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} className="h-full">
-      <EditProfil onBack={handleEditBack} />
+    <motion.div data-stack-view variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} className="h-full">
+      <EditProfil onBack={handleEditBack} data-stack-back />
     </motion.div>
   );
 
