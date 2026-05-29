@@ -1,5 +1,6 @@
 // src/screens/NatalChart.jsx
 import React, { useRef, useEffect, useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useProfileContext } from '../context/ProfileContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { getThemeNatal } from '../services/astroService';
@@ -389,56 +390,111 @@ const NatalChart = ({ onSeeNoeuds, onUpgrade }) => {
         </button>
       </div>
 
-      {/* Interpretation Modal avec PremiumGate */}
-      {planeteSelectionnee && (
-        <div 
-          className="absolute inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300"
-          onClick={() => setPlaneteSelectionnee(null)}
-        >
-          <div 
-            className="bg-[#0E1228] border border-gold/30 rounded-3xl p-8 max-w-sm w-full text-center relative shadow-2xl shadow-gold/20"
-            onClick={e => e.stopPropagation()}
+      {/* Modal Planète avec animation fluide */}
+      <AnimatePresence>
+        {planeteSelectionnee && (
+          <motion.div
+            className="absolute inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-50 p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            onClick={() => setPlaneteSelectionnee(null)}
           >
-            <div className="mb-4 flex justify-center">
-              <PlanetCircle planete={planeteSelectionnee.nom} size="lg" couleur={planeteSelectionnee.couleur} />
-            </div>
-            <h2 className="font-serif text-xl text-gold mb-1">{planeteSelectionnee.nom}</h2>
-            <p className="text-muted text-[10px] uppercase tracking-widest mb-2">
-              en {planeteSelectionnee.signe}
-              {planeteSelectionnee.maison && (
-                <span className="text-gold/50"> · Maison {planeteSelectionnee.maison}</span>
-              )}
-            </p>
-            {planeteSelectionnee.maisonTexte && (
-              <p className="text-[9px] text-gold/40 tracking-widest uppercase mb-3">{planeteSelectionnee.maisonTexte}</p>
-            )}
-            <div className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent mb-6" />
-            
-            {isPremiumUser && planeteSelectionnee.lectureMaison ? (
-              <p className="text-cream/90 text-sm leading-relaxed italic font-serif">
-                « {planeteSelectionnee.lectureMaison} »
-              </p>
-            ) : (
-              <PremiumGate 
-                featureKey="theme_interactif" 
-                onUpgrade={onUpgrade}
-                preview={false}
-              >
-                <p className="text-cream/90 text-sm leading-relaxed italic font-serif">
-                  « {planeteSelectionnee.lectureMaison || planeteSelectionnee.interpretation} »
-                </p>
-              </PremiumGate>
-            )}
-            
-            <button 
-              onClick={() => setPlaneteSelectionnee(null)}
-              className="mt-8 text-[10px] text-gold/70 uppercase tracking-[2px] border border-gold/20 px-8 py-2.5 rounded-full hover:bg-gold/10 transition-colors"
+            <motion.div
+              className="bg-[#0E1228] border border-gold/30 rounded-3xl p-8 max-w-sm w-full text-center relative shadow-2xl shadow-gold/20"
+              initial={{ opacity: 0, scale: 0.85, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ 
+                duration: 0.4, 
+                ease: [0.25, 0.1, 0.25, 1],
+                delay: 0.05
+              }}
+              onClick={e => e.stopPropagation()}
             >
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
+              <motion.div 
+                className="mb-4 flex justify-center"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.3, ease: 'backOut' }}
+              >
+                <PlanetCircle planete={planeteSelectionnee.nom} size="lg" couleur={planeteSelectionnee.couleur} />
+              </motion.div>
+              <motion.h2 
+                className="font-serif text-xl text-gold mb-1"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.3 }}
+              >
+                {planeteSelectionnee.nom}
+              </motion.h2>
+              <motion.p 
+                className="text-muted text-[10px] uppercase tracking-widest mb-2"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3, duration: 0.3 }}
+              >
+                en {planeteSelectionnee.signe}
+                {planeteSelectionnee.maison && (
+                  <span className="text-gold/50"> · Maison {planeteSelectionnee.maison}</span>
+                )}
+              </motion.p>
+              {planeteSelectionnee.maisonTexte && (
+                <motion.p 
+                  className="text-[9px] text-gold/40 tracking-widest uppercase mb-3"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.35, duration: 0.3 }}
+                >
+                  {planeteSelectionnee.maisonTexte}
+                </motion.p>
+              )}
+              <motion.div 
+                className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent mb-6"
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ delay: 0.4, duration: 0.4 }}
+              />
+              
+              {/* CONTENU CONDITIONNEL : Premium vs Free */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.45, duration: 0.3 }}
+              >
+                {isPremiumUser && planeteSelectionnee.lectureMaison ? (
+                  <p className="text-cream/90 text-sm leading-relaxed italic font-serif">
+                    « {planeteSelectionnee.lectureMaison} »
+                  </p>
+                ) : (
+                  <PremiumGate 
+                    featureKey="theme_interactif" 
+                    onUpgrade={onUpgrade}
+                    preview={false}
+                  >
+                    <p className="text-cream/90 text-sm leading-relaxed italic font-serif">
+                      « {planeteSelectionnee.lectureMaison || planeteSelectionnee.interpretation} »
+                    </p>
+                  </PremiumGate>
+                )}
+              </motion.div>
+              
+              <motion.button 
+                onClick={() => setPlaneteSelectionnee(null)}
+                className="mt-8 text-[10px] text-gold/70 uppercase tracking-[2px] border border-gold/20 px-8 py-2.5 rounded-full hover:bg-gold/10 transition-colors"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.3 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Fermer
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

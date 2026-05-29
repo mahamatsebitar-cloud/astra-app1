@@ -235,6 +235,12 @@ const Profil = ({ onLogout, onNavigate }) => {
         <div className="text-center mt-5">
           <h2 className="font-serif text-2xl text-cream tracking-wide">{displayNom}</h2>
           <p className="text-gold/60 text-[10px] tracking-[4px] uppercase mt-1.5 font-bold italic">{titreProfil}</p>
+          {isActive && (
+            <div className="flex items-center gap-1.5 mt-2 bg-gold/10 border border-gold/20 rounded-full px-3 py-1">
+              <span className="text-gold text-[10px]">✦</span>
+              <span className="text-gold text-[9px] tracking-[3px] uppercase font-black">Étoile</span>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 bg-card/40 backdrop-blur-xl border border-white/5 rounded-full px-6 py-2.5 text-[11px] tracking-wider flex items-center gap-4 shadow-2xl">
@@ -280,7 +286,13 @@ const Profil = ({ onLogout, onNavigate }) => {
         <div className="absolute -top-4 -right-4 text-8xl text-gold/5 font-serif group-hover:rotate-12 transition-transform duration-1000">✦</div>
         <div className="flex justify-between items-start mb-3">
           <span className="text-[10px] text-gold tracking-[4px] uppercase font-black">Astra Étoile</span>
-          <span className="bg-gold text-night px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter">
+          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${
+            isActive 
+              ? 'bg-gold text-night shadow-lg shadow-gold/20' 
+              : isTrial 
+                ? 'bg-gold/20 text-gold border border-gold/30' 
+                : 'bg-white/10 text-muted'
+          }`}>
             {subscriptionInfo.badge}
           </span>
         </div>

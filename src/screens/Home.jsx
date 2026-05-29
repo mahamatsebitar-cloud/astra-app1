@@ -1,5 +1,6 @@
 // src/screens/Home.jsx
 import React, { useMemo, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Card from '../components/ui/Card';
 import Tag from '../components/ui/Tag';
 import PlanetCircle from '../components/ui/PlanetCircle';
@@ -371,28 +372,92 @@ const Home = ({ onHoroscope, onProfil }) => {
         <span className="text-gold text-xl">→</span>
       </Card>
 
-      {/* Modal Planète */}
-      {selectedPlanet && (
-        <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-6" onClick={() => setSelectedPlanet(null)}>
-          <div className="bg-[#0E1228] border border-gold/30 rounded-2xl p-8 max-w-sm w-full text-center" onClick={e => e.stopPropagation()}>
-            <div className="mb-4 flex justify-center">
-               <PlanetCircle planete={selectedPlanet.nom} size="lg" couleur={selectedPlanet.couleur} symbole={selectedPlanet.symbole} />
-            </div>
-            <h2 className="font-serif text-xl text-gold mb-1">{selectedPlanet.nom}</h2>
-            {selectedPlanet.maison && (
-              <p className="text-gold/50 text-[10px] uppercase tracking-widest mb-2">Maison {selectedPlanet.maison} · {SIGNIFICATIONS_MAISONS[selectedPlanet.maison]}</p>
-            )}
-            <p className="text-muted text-[10px] uppercase tracking-widest mb-4">
-              {selectedPlanet.position || selectedPlanet.aspect}
-            </p>
-            <div className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent mb-6" />
-            <p className="text-cream/90 text-sm leading-relaxed italic">
-              « {selectedPlanet.aspectPersonnalise || INFOS_MOUVEMENTS[selectedPlanet.nom] || "Cette configuration influence votre croissance."} »
-            </p>
-            <button onClick={() => setSelectedPlanet(null)} className="mt-8 text-[10px] text-gold/50 uppercase tracking-[2px] border border-gold/20 px-8 py-2 rounded-full">Fermer</button>
-          </div>
-        </div>
-      )}
+      {/* Modal Planète avec animation fluide */}
+      <AnimatePresence>
+        {selectedPlanet && (
+          <motion.div
+            className="absolute inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            onClick={() => setSelectedPlanet(null)}
+          >
+            <motion.div
+              className="bg-[#0E1228] border border-gold/30 rounded-2xl p-8 max-w-sm w-full text-center"
+              initial={{ opacity: 0, scale: 0.85, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ 
+                duration: 0.4, 
+                ease: [0.25, 0.1, 0.25, 1],
+                delay: 0.05
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <motion.div 
+                className="mb-4 flex justify-center"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.3, ease: 'backOut' }}
+              >
+                <PlanetCircle planete={selectedPlanet.nom} size="lg" couleur={selectedPlanet.couleur} symbole={selectedPlanet.symbole} />
+              </motion.div>
+              <motion.h2 
+                className="font-serif text-xl text-gold mb-1"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.3 }}
+              >
+                {selectedPlanet.nom}
+              </motion.h2>
+              {selectedPlanet.maison && (
+                <motion.p 
+                  className="text-gold/50 text-[10px] uppercase tracking-widest mb-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.3 }}
+                >
+                  Maison {selectedPlanet.maison} · {SIGNIFICATIONS_MAISONS[selectedPlanet.maison]}
+                </motion.p>
+              )}
+              <motion.p 
+                className="text-muted text-[10px] uppercase tracking-widest mb-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.35, duration: 0.3 }}
+              >
+                {selectedPlanet.position || selectedPlanet.aspect}
+              </motion.p>
+              <motion.div 
+                className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent mb-6"
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ delay: 0.4, duration: 0.4 }}
+              />
+              <motion.p 
+                className="text-cream/90 text-sm leading-relaxed italic"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.45, duration: 0.3 }}
+              >
+                « {selectedPlanet.aspectPersonnalise || INFOS_MOUVEMENTS[selectedPlanet.nom] || "Cette configuration influence votre croissance."} »
+              </motion.p>
+              <motion.button 
+                onClick={() => setSelectedPlanet(null)} 
+                className="mt-8 text-[10px] text-gold/50 uppercase tracking-[2px] border border-gold/20 px-8 py-2 rounded-full hover:bg-gold/10 hover:text-gold transition-all"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.3 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Fermer
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

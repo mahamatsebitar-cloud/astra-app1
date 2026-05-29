@@ -205,9 +205,25 @@ export const getFriends = async (userId) => {
 
     if (pError) throw pError;
 
+    // Récupérer le statut premium de chaque ami
+    const { data: subscriptions } = await supabase
+      .from('subscriptions')
+      .select('user_id, status, plan')
+      .in('user_id', friendIds);
+
+    // Enrichir les profils avec le statut premium
+    const profilesEnriched = (profiles || []).map(p => ({
+      ...p,
+      isPremium: subscriptions?.some(s => 
+        s.user_id === p.id && 
+        s.status === 'active' && 
+        s.plan !== 'free'
+      ) || false
+    }));
+
     const result = friendships.map(f => ({
       friendshipId: f.id,
-      ami: profiles?.find(p =>
+      ami: profilesEnriched?.find(p =>
         p.id === (f.sender_id === userId ? f.receiver_id : f.sender_id)
       )
     })).filter(f => f.ami !== null);

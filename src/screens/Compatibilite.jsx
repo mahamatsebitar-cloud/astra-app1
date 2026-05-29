@@ -197,7 +197,15 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
           <div className="mb-4">
             <ZodiacSymbol signe={ami.signe_solaire} size={70} color="#C9A460" />
           </div>
-          <h2 className="font-serif text-2xl text-cream">{ami.nom}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="font-serif text-2xl text-cream">{ami.nom}</h2>
+            {ami?.isPremium && (
+              <div className="flex items-center gap-1 bg-gold/10 border border-gold/20 rounded-full px-2 py-0.5">
+                <span className="text-gold text-[9px]">✦</span>
+                <span className="text-gold text-[8px] tracking-[2px] uppercase font-black">Étoile</span>
+              </div>
+            )}
+          </div>
           <p className="text-muted text-xs mt-1">@{ami.username || '...'}</p>
           {tempsRelatif && <p className="text-muted/40 text-[10px] mt-1">{tempsRelatif}</p>}
         </div>
@@ -461,7 +469,12 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
                     {ami?.nom?.charAt(0)}
                   </div>
                   <div className="flex-1">
-                    <p className="text-cream font-bold tracking-wide">{ami?.nom}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-cream font-bold tracking-wide">{ami?.nom}</p>
+                      {ami?.isPremium && (
+                        <span className="text-gold text-[8px]">✦</span>
+                      )}
+                    </div>
                     <p className="text-[9px] text-muted uppercase tracking-[0.1em]">@{ami?.username} · {ami?.signe_solaire}</p>
                     {getTempsRelatif(ami?.last_seen_at) && (
                       <p className="text-muted/40 text-[9px] mt-0.5">{getTempsRelatif(ami?.last_seen_at)}</p>
