@@ -1,5 +1,6 @@
 // src/screens/Profil.jsx
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../hooks/useAuth';
@@ -36,6 +37,12 @@ const getTitreProfil = (signe, nom) => {
   const voyellesFinales = ['a', 'e', 'i', 'é', 'ée', 'ie', 'ne', 'le', 'ce', 'se', 'de', 'te'];
   const genre = voyellesFinales.some(fin => prenom.endsWith(fin)) ? 'fem' : 'masc';
   return TITRES_PROFIL[signe]?.[genre] || TITRES_PROFIL["Verseau"][genre];
+};
+
+const slideVariants = {
+  enter: { opacity: 0, x: 300 },
+  center: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: 300 }
 };
 
 const Profil = ({ onLogout, onNavigate }) => {
@@ -182,11 +189,27 @@ const Profil = ({ onLogout, onNavigate }) => {
     }
   };
 
-  // ─── RETURNS CONDITIONNELS APRÈS TOUS LES HOOKS ───
-  if (legalScreen === 'cgu') return <CGU onBack={() => setLegalScreen(null)} />;
-  if (legalScreen === 'confidentialite') return <PolitiqueConfidentialite onBack={() => setLegalScreen(null)} />;
-  if (legalScreen === 'mentions') return <MentionsLegales onBack={() => setLegalScreen(null)} />;
-  if (isEditing) return <EditProfil onBack={handleEditBack} />;
+  // ─── RETURNS CONDITIONNELS ANIMÉS ───
+  if (legalScreen === 'cgu') return (
+    <motion.div variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} className="h-full">
+      <CGU onBack={() => setLegalScreen(null)} />
+    </motion.div>
+  );
+  if (legalScreen === 'confidentialite') return (
+    <motion.div variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} className="h-full">
+      <PolitiqueConfidentialite onBack={() => setLegalScreen(null)} />
+    </motion.div>
+  );
+  if (legalScreen === 'mentions') return (
+    <motion.div variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} className="h-full">
+      <MentionsLegales onBack={() => setLegalScreen(null)} />
+    </motion.div>
+  );
+  if (isEditing) return (
+    <motion.div variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }} className="h-full">
+      <EditProfil onBack={handleEditBack} />
+    </motion.div>
+  );
 
   if (loading) {
     return (
