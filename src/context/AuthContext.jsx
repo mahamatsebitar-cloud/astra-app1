@@ -8,53 +8,59 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // ÉTAPE 1 — Lire la session locale immédiatement (sans réseau)
+    let localUserLoaded = false;
+
+    // ÉTAPE 1 — Session locale immédiate
     try {
-      const localSession = localStorage.getItem('sb-nygqrchwrhvgkhjjapue-auth-token');
-      if (localSession) {
-        const parsed = JSON.parse(localSession);
+      const keys = Object.keys(localStorage).filter(k => 
+        k.startsWith('sb-') && k.endsWith('-auth-token')
+      );
+      if (keys.length > 0) {
+        const parsed = JSON.parse(localStorage.getItem(keys[0]));
         const sessionUser = parsed?.user || parsed?.session?.user;
-        if (sessionUser) {
+        if (sessionUser?.id) {
           setUser(sessionUser);
           setLoading(false);
-          console.log('✅ Session locale trouvée:', sessionUser.id);
+          localUserLoaded = true;
+          console.log('✅ Session locale:', sessionUser.id);
         }
       }
     } catch (e) {
-      console.warn('Lecture session locale échouée:', e);
+      console.warn('Session locale échouée:', e);
     }
 
     const safetyTimer = setTimeout(() => {
-      console.warn('Auth timeout — affichage forcé');
       setLoading(false);
-    }, 8000);
+    }, 5000);
 
-    // ÉTAPE 2 — Vérifier avec le serveur en arrière-plan
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      // Ne pas écraser avec null si hors connexion
-      if (session?.user) {
-        setUser(session.user);
-      } else if (!navigator.onLine) {
-        // Hors connexion → garder la session locale
-        console.warn('Hors connexion — session locale conservée');
-      } else {
-        // En ligne mais pas de session → déconnecté
-        setUser(null);
-      }
-      setLoading(false);
-      clearTimeout(safetyTimer);
-    }).catch(() => {
-      console.warn('getSession échoué — session locale conservée');
-      setLoading(false);
-      clearTimeout(safetyTimer);
-    });
-
+    // ÉTAPE 2 — Vérification réseau
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (event === 'SIGNED_OUT' && !navigator.onLine) return;
-        setUser(session?.user ?? null);
-        setLoading(false);
+        console.log('Auth event:', event, 'online:', navigator.onLine);
+        
         clearTimeout(safetyTimer);
+
+        if (session?.user) {
+          // Session valide → toujours mettre à jour
+          setUser(session.user);
+          setLoading(false);
+        } else if (event === 'SIGNED_OUT') {
+          // Déconnexion explicite → effacer
+          setUser(null);
+          setLoading(false);
+        } else if (!navigator.onLine && localUserLoaded) {
+          // Hors connexion + session locale existante → ne rien changer
+          console.warn('Hors connexion — session locale conservée');
+          setLoading(false);
+        } else if (event === 'INITIAL_SESSION' && !session) {
+          // Première session nulle EN LIGNE → pas connecté
+          if (navigator.onLine) {
+            setUser(null);
+          }
+          setLoading(false);
+        } else {
+          setLoading(false);
+        }
       }
     );
 
