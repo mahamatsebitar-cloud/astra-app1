@@ -229,7 +229,7 @@ export default function EditProfil({ onBack }) {
     <div className="w-full max-w-[400px] mx-auto px-5 py-6 space-y-6 select-none animate-in fade-in slide-in-from-bottom-4 duration-500">
 
       <div className="flex justify-between items-center px-1 mb-4">
-        <button onClick={onBack} className="text-muted/80 text-sm font-serif hover:text-gold transition-all active:scale-95">
+        <button data-stack-back onClick={onBack} className="text-muted/80 text-sm font-serif hover:text-gold transition-all active:scale-95">
           ← Retour
         </button>
         <h1 className="text-cream font-serif text-base tracking-wide">Alchimie du Profil</h1>
