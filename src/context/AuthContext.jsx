@@ -31,11 +31,20 @@ export function AuthProvider({ children }) {
 
     // ÉTAPE 2 — Vérifier avec le serveur en arrière-plan
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      // Ne pas écraser avec null si hors connexion
+      if (session?.user) {
+        setUser(session.user);
+      } else if (!navigator.onLine) {
+        // Hors connexion → garder la session locale
+        console.warn('Hors connexion — session locale conservée');
+      } else {
+        // En ligne mais pas de session → déconnecté
+        setUser(null);
+      }
       setLoading(false);
       clearTimeout(safetyTimer);
     }).catch(() => {
-      console.warn('Vérification réseau échouée — session locale conservée');
+      console.warn('getSession échoué — session locale conservée');
       setLoading(false);
       clearTimeout(safetyTimer);
     });
