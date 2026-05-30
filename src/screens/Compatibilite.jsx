@@ -1,5 +1,6 @@
 // src/screens/Compatibilite.jsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Share } from '@capacitor/share';
 import { Clipboard } from '@capacitor/clipboard';
 import Card from '../components/ui/Card';
@@ -38,6 +39,12 @@ const getTexteActivite = (activity) => {
     case 'ami_demande': return `${activity.actor?.nom} souhaite vous rejoindre`;
     default: return null;
   }
+};
+
+const slideVariants = {
+  enter: { opacity: 0, x: 300 },
+  center: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: 300 }
 };
 
 const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
@@ -178,14 +185,24 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
     setTimeout(() => setShareStatus(null), 3000);
   };
 
-  // VUE 3 — PROFIL D'UN AMI
-  if (vue === 'profil' && amiSelectionne) {
+  // ─── VUE PROFIL AMI ───
+  const renderProfilAmi = () => {
     const ami = amiSelectionne.ami || amiSelectionne;
     const horoAmi = getHoroscopeComplet(ami.signe_solaire);
     const tempsRelatif = getTempsRelatif(ami.last_seen_at);
 
     return (
-      <div ref={scrollRef} data-stack-view className="w-full space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 px-4">
+      <motion.div 
+        key="profil"
+        ref={scrollRef}
+        data-stack-view
+        variants={slideVariants}
+        initial="enter"
+        animate="center"
+        exit="exit"
+        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+        className="w-full space-y-6 pb-20 px-4 h-full overflow-y-auto"
+      >
         <div className="flex justify-between items-center pt-6">
           <button data-stack-back onClick={() => setVue('detail')} className="text-muted text-xs uppercase tracking-widest flex items-center gap-2 active:opacity-50 font-bold">
             <span className="text-lg">←</span> Retour
@@ -232,12 +249,12 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
         <button onClick={() => setVue('detail')} className="w-full border border-gold/30 text-gold text-sm py-3 rounded-full active:scale-95 transition-all">
           Voir notre compatibilité →
         </button>
-      </div>
+      </motion.div>
     );
-  }
+  };
 
-  // VUE 2 — DÉTAIL COMPATIBILITÉ
-  if (vue === 'detail' && amiSelectionne) {
+  // ─── VUE DÉTAIL COMPATIBILITÉ ───
+  const renderDetail = () => {
     const ami = amiSelectionne.ami || amiSelectionne;
     const comp = getCompatibilityWith(ami);
     const rayon = 26;
@@ -245,7 +262,17 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
     const dash = (comp.global / 100) * circonference;
 
     return (
-      <div ref={scrollRef} data-stack-view className="w-full space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500 px-4">
+      <motion.div 
+        key="detail"
+        ref={scrollRef}
+        data-stack-view
+        variants={slideVariants}
+        initial="enter"
+        animate="center"
+        exit="exit"
+        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+        className="w-full space-y-6 pb-20 px-4 h-full overflow-y-auto"
+      >
         <button data-stack-back onClick={() => setVue('liste')} className="text-muted text-xs uppercase tracking-widest flex items-center gap-2 py-6 active:opacity-50 font-bold">
           <span className="text-lg">←</span> Retour aux alliances
         </button>
@@ -323,196 +350,213 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
             </div>
           </div>
         </PremiumGate>
-      </div>
+      </motion.div>
     );
-  }
+  };
 
-  // VUE 1 — LISTE DES ALLIANCES
+  // ─── VUE LISTE (render principal) ───
   return (
-    <div ref={scrollRef} className="w-full space-y-8 pb-24 px-4 animate-in fade-in duration-700">
-      <header className="flex justify-between items-end pt-8">
-        <div className="space-y-1">
-          <p className="text-[10px] text-gold tracking-[0.4em] uppercase font-black">Astra Network</p>
-          <h3 className="text-3xl font-serif text-cream">Vos Alliances</h3>
-          {profile?.username && (
-            <p className="text-muted text-[10px] mt-1">@{profile.username}</p>
-          )}
-        </div>
-        <button onClick={() => {
-            // Si free (pas trial, pas premium) et déjà 1 ami → afficher gate
-            const isFreeUser = !isTrial && !isActive;
-            if (!showSearch && isFreeUser && friends.length >= 1) {
-              setShowFriendLimit(true);
-              return;
-            }
-            setShowSearch(!showSearch);
-          }}
-          className={`w-14 h-14 rounded-[20px] flex items-center justify-center transition-all duration-500 shadow-lg ${showSearch ? 'bg-red-500/10 text-red-500 border border-red-500/20 rotate-90' : 'bg-gold/10 text-gold border border-gold/20'}`}>
-          <span className="text-3xl font-light">{showSearch ? '×' : '+'}</span>
-        </button>
-      </header>
+    <div className="relative h-full">
+      <AnimatePresence mode="wait">
+        {vue === 'profil' && amiSelectionne && renderProfilAmi()}
+        {vue === 'detail' && amiSelectionne && renderDetail()}
+      </AnimatePresence>
 
-      {showFriendLimit && (
-        <div className="animate-in zoom-in-95 duration-300">
-          <PremiumGate featureKey="noeuds_lunaires" onUpgrade={() => { setShowFriendLimit(false); onUpgrade(); }} preview={false}>
-            <div className="p-8 text-center">
-              <p className="font-serif text-cream text-sm">Connexions illimitées</p>
-              <p className="text-muted text-xs mt-2">Rejoins la constellation Astra pour explorer toutes tes affinités.</p>
-            </div>
-          </PremiumGate>
-          <button 
-            onClick={() => setShowFriendLimit(false)}
-            className="w-full text-muted text-xs py-2 mt-2"
-          >
-            Annuler
+      <div ref={scrollRef} className={`w-full space-y-8 pb-24 px-4 h-full overflow-y-auto ${vue !== 'liste' ? 'opacity-0 pointer-events-none' : ''}`}>
+        <header className="flex justify-between items-end pt-8">
+          <div className="space-y-1">
+            <p className="text-[10px] text-gold tracking-[0.4em] uppercase font-black">Astra Network</p>
+            <h3 className="text-3xl font-serif text-cream">Vos Alliances</h3>
+            {profile?.username && (
+              <p className="text-muted text-[10px] mt-1">@{profile.username}</p>
+            )}
+          </div>
+          <button onClick={() => {
+              // Si free (pas trial, pas premium) et déjà 1 ami → afficher gate
+              const isFreeUser = !isTrial && !isActive;
+              if (!showSearch && isFreeUser && friends.length >= 1) {
+                setShowFriendLimit(true);
+                return;
+              }
+              setShowSearch(!showSearch);
+            }}
+            className={`w-14 h-14 rounded-[20px] flex items-center justify-center transition-all duration-500 shadow-lg ${showSearch ? 'bg-red-500/10 text-red-500 border border-red-500/20 rotate-90' : 'bg-gold/10 text-gold border border-gold/20'}`}>
+            <span className="text-3xl font-light">{showSearch ? '×' : '+'}</span>
           </button>
-        </div>
-      )}
+        </header>
 
-      {showSearch && (
-        <div data-stack-view className="space-y-4 animate-in zoom-in-95 duration-300">
-          <div className="relative group">
-            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher par @username ou email..."
-              className="w-full bg-card/50 border border-white/10 rounded-[22px] pl-6 pr-24 py-5 text-cream text-sm focus:border-gold/40 focus:bg-card outline-none transition-all" />
-            <button onClick={handleSearch} disabled={searchLoading}
-              className="absolute right-2 top-2 bottom-2 bg-gold hover:bg-gold/80 text-night font-serif font-bold rounded-[16px] px-5 transition-all disabled:opacity-50">
-              {searchLoading ? '...' : 'Chercher'}
+        {showFriendLimit && (
+          <div className="animate-in zoom-in-95 duration-300">
+            <PremiumGate featureKey="noeuds_lunaires" onUpgrade={() => { setShowFriendLimit(false); onUpgrade(); }} preview={false}>
+              <div className="p-8 text-center">
+                <p className="font-serif text-cream text-sm">Connexions illimitées</p>
+                <p className="text-muted text-xs mt-2">Rejoins la constellation Astra pour explorer toutes tes affinités.</p>
+              </div>
+            </PremiumGate>
+            <button 
+              onClick={() => setShowFriendLimit(false)}
+              className="w-full text-muted text-xs py-2 mt-2"
+            >
+              Annuler
             </button>
           </div>
+        )}
 
-          {searchResults && searchResults.length > 0 && searchResults.map((result) => (
-            <Card key={result.id} onClick={() => !result.isFriend && !result.isPending && handleAddFriend(result.id)}
-              className={`p-5 flex items-center gap-4 animate-in slide-in-from-top-4 duration-500 border-gold/20 ${invitationStatus === 'success' ? 'bg-green-500/10 border-green-500/30' : ''}`}>
-              <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gold text-xl font-serif">
-                {result.nom?.charAt(0)}
-              </div>
-              <div className="flex-1">
-                <p className="text-cream font-medium">{result.nom}</p>
-                <p className="text-[10px] text-gold/60 uppercase tracking-widest">@{result.username} · {result.signe_solaire}</p>
-              </div>
-              <div className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-colors ${result.isFriend ? 'bg-green-500/10 text-green-400 border border-green-500/20' : result.isPending ? 'bg-gold/5 text-gold/50 border border-gold/10' : invitationStatus === 'success' ? 'bg-green-500 text-white' : 'bg-gold/10 text-gold border border-gold/20'}`}>
-                {result.isFriend ? 'Ami' : result.isPending ? 'En attente' : invitationStatus === 'success' ? 'Envoyé ✓' : invitationStatus === 'limit' ? 'Limite ✦' : 'Inviter'}
-              </div>
-            </Card>
-          ))}
-          {searchResults?.length === 0 && (
-            <div className="text-center py-8"><p className="text-muted/40 font-serif italic text-sm">Aucun compte trouvé</p></div>
-          )}
-
-          <button data-stack-back onClick={() => setShowSearch(false)} className="w-full text-muted text-xs py-2 mt-2 border border-white/10 rounded-full">
-            Annuler la recherche
-          </button>
-        </div>
-      )}
-
-      {/* ─── DEMANDES EN ATTENTE ─── */}
-      {pendingRequests.length > 0 && (
-        <div className="space-y-4" data-pending-section>
-          <p className="text-[10px] text-gold tracking-[0.2em] uppercase font-bold ml-1">Appels des astres</p>
-          <div className="grid gap-3">
-            {pendingRequests.map((req) => (
-              <div key={req.id} className="bg-gradient-to-r from-gold/10 to-transparent border border-gold/20 p-5 rounded-[24px] flex items-center justify-between shadow-inner">
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-gold/20 flex items-center justify-center text-gold font-serif border border-gold/30">
-                    {req.sender?.nom?.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="text-cream text-sm font-bold tracking-wide">{req.sender?.nom}</p>
-                    <p className="text-[9px] text-gold/60 uppercase font-bold">@{req.sender?.username} · {req.sender?.signe_solaire}</p>
-                  </div>
-                </div>
-                <button onClick={() => acceptRequest(req.id)}
-                  className="bg-gold text-night text-[10px] font-black px-5 py-2.5 rounded-full shadow-lg active:scale-95 transition-all">
-                  ACCEPTER
+        <AnimatePresence>
+          {showSearch && (
+            <motion.div 
+              key="search"
+              data-stack-view
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="space-y-4"
+            >
+              <div className="relative group">
+                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Rechercher par @username ou email..."
+                  className="w-full bg-card/50 border border-white/10 rounded-[22px] pl-6 pr-24 py-5 text-cream text-sm focus:border-gold/40 focus:bg-card outline-none transition-all" />
+                <button onClick={handleSearch} disabled={searchLoading}
+                  className="absolute right-2 top-2 bottom-2 bg-gold hover:bg-gold/80 text-night font-serif font-bold rounded-[16px] px-5 transition-all disabled:opacity-50">
+                  {searchLoading ? '...' : 'Chercher'}
                 </button>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {activityFeed.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-[10px] text-muted tracking-[0.2em] uppercase font-bold ml-1">Activité récente</p>
-          <div className="bg-card/20 border border-white/5 rounded-[24px] p-4 space-y-3">
-            {activityFeed.slice(0, 5).map((activity) => {
-              const texte = getTexteActivite(activity);
-              if (!texte) return null;
-              return (
-                <div key={activity.id} className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-gold text-[10px] font-serif">
-                    {activity.actor?.nom?.charAt(0)}
+              {searchResults && searchResults.length > 0 && searchResults.map((result) => (
+                <Card key={result.id} onClick={() => !result.isFriend && !result.isPending && handleAddFriend(result.id)}
+                  className={`p-5 flex items-center gap-4 animate-in slide-in-from-top-4 duration-500 border-gold/20 ${invitationStatus === 'success' ? 'bg-green-500/10 border-green-500/30' : ''}`}>
+                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gold text-xl font-serif">
+                    {result.nom?.charAt(0)}
                   </div>
                   <div className="flex-1">
-                    <p className="text-cream/70 text-[11px]">{texte}</p>
-                    <p className="text-muted text-[9px]">{getTempsRelatif(activity.created_at)}</p>
+                    <p className="text-cream font-medium">{result.nom}</p>
+                    <p className="text-[10px] text-gold/60 uppercase tracking-widest">@{result.username} · {result.signe_solaire}</p>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                  <div className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-colors ${result.isFriend ? 'bg-green-500/10 text-green-400 border border-green-500/20' : result.isPending ? 'bg-gold/5 text-gold/50 border border-gold/10' : invitationStatus === 'success' ? 'bg-green-500 text-white' : 'bg-gold/10 text-gold border border-gold/20'}`}>
+                    {result.isFriend ? 'Ami' : result.isPending ? 'En attente' : invitationStatus === 'success' ? 'Envoyé ✓' : invitationStatus === 'limit' ? 'Limite ✦' : 'Inviter'}
+                  </div>
+                </Card>
+              ))}
+              {searchResults?.length === 0 && (
+                <div className="text-center py-8"><p className="text-muted/40 font-serif italic text-sm">Aucun compte trouvé</p></div>
+              )}
 
-      <div className="space-y-4">
-        <p className="text-[10px] text-muted tracking-[0.2em] uppercase font-bold ml-1">Cercle Restreint</p>
-        {friends.length === 0 ? (
-          <div className="text-center py-20 border border-dashed border-white/5 rounded-[40px] bg-white/[0.01]">
-            <p className="text-muted/40 font-serif italic text-base">« Le ciel est vaste, ne voyagez pas seul. »</p>
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {friends.map((f) => {
-              const ami = f.ami;
-              const comp = getCompatibilityWith(ami);
-              return (
-                <div key={f.friendshipId} onClick={() => { setAmiSelectionne(f); setVue('detail'); }}
-                  className="bg-card/40 border border-white/5 p-5 rounded-[28px] flex items-center gap-5 active:scale-[0.98] transition-all hover:bg-card/60 hover:border-gold/20 shadow-sm">
-                  <div className="w-14 h-14 rounded-full bg-night border border-white/5 flex items-center justify-center text-gold font-serif text-2xl shadow-inner">
-                    {ami?.nom?.charAt(0)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-cream font-bold tracking-wide">{ami?.nom}</p>
-                      {ami?.isPremium && (
-                        <span className="text-gold text-[8px]">✦</span>
-                      )}
+              <button data-stack-back onClick={() => setShowSearch(false)} className="w-full text-muted text-xs py-2 mt-2 border border-white/10 rounded-full">
+                Annuler la recherche
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ─── DEMANDES EN ATTENTE ─── */}
+        {pendingRequests.length > 0 && (
+          <div className="space-y-4" data-pending-section>
+            <p className="text-[10px] text-gold tracking-[0.2em] uppercase font-bold ml-1">Appels des astres</p>
+            <div className="grid gap-3">
+              {pendingRequests.map((req) => (
+                <div key={req.id} className="bg-gradient-to-r from-gold/10 to-transparent border border-gold/20 p-5 rounded-[24px] flex items-center justify-between shadow-inner">
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-full bg-gold/20 flex items-center justify-center text-gold font-serif border border-gold/30">
+                      {req.sender?.nom?.charAt(0)}
                     </div>
-                    <p className="text-[9px] text-muted uppercase tracking-[0.1em]">@{ami?.username} · {ami?.signe_solaire}</p>
-                    {getTempsRelatif(ami?.last_seen_at) && (
-                      <p className="text-muted/40 text-[9px] mt-0.5">{getTempsRelatif(ami?.last_seen_at)}</p>
-                    )}
+                    <div>
+                      <p className="text-cream text-sm font-bold tracking-wide">{req.sender?.nom}</p>
+                      <p className="text-[9px] text-gold/60 uppercase font-bold">@{req.sender?.username} · {req.sender?.signe_solaire}</p>
+                    </div>
                   </div>
-                  <div className="text-right flex flex-col items-end">
-                    <span className="text-xl font-serif" style={{ color: getScoreColor(comp.global) }}>{comp.global}%</span>
-                    <div className="w-8 h-0.5 mt-1 rounded-full opacity-30" style={{ backgroundColor: getScoreColor(comp.global) }} />
-                  </div>
+                  <button onClick={() => acceptRequest(req.id)}
+                    className="bg-gold text-night text-[10px] font-black px-5 py-2.5 rounded-full shadow-lg active:scale-95 transition-all">
+                    ACCEPTER
+                  </button>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         )}
-      </div>
 
-      {/* ─── BOUTON PARTAGER AVEC FEEDBACK ─── */}
-      <div className="relative">
-        <button 
-          onClick={handleShare} 
-          disabled={shareStatus === 'shared' || shareStatus === 'copied'}
-          className={`w-full border text-sm py-3 rounded-full active:scale-95 transition-all mt-4 ${
-            shareStatus === 'error' 
-              ? 'border-red-500/30 text-red-400 bg-red-500/5' 
-              : shareStatus === 'shared' || shareStatus === 'copied'
-                ? 'border-green-500/30 text-green-400 bg-green-500/5'
-                : 'border-gold/20 text-gold hover:bg-gold/5'
-          }`}
-        >
-          {shareStatus === 'shared' ? '✓ Partagé !' 
-            : shareStatus === 'copied' ? '✓ Lien copié !' 
-            : shareStatus === 'error' ? '✗ Erreur, réessaie'
-            : 'Partager mon profil astral'}
-        </button>
+        {activityFeed.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-[10px] text-muted tracking-[0.2em] uppercase font-bold ml-1">Activité récente</p>
+            <div className="bg-card/20 border border-white/5 rounded-[24px] p-4 space-y-3">
+              {activityFeed.slice(0, 5).map((activity) => {
+                const texte = getTexteActivite(activity);
+                if (!texte) return null;
+                return (
+                  <div key={activity.id} className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-gold text-[10px] font-serif">
+                      {activity.actor?.nom?.charAt(0)}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-cream/70 text-[11px]">{texte}</p>
+                      <p className="text-muted text-[9px]">{getTempsRelatif(activity.created_at)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <p className="text-[10px] text-muted tracking-[0.2em] uppercase font-bold ml-1">Cercle Restreint</p>
+          {friends.length === 0 ? (
+            <div className="text-center py-20 border border-dashed border-white/5 rounded-[40px] bg-white/[0.01]">
+              <p className="text-muted/40 font-serif italic text-base">« Le ciel est vaste, ne voyagez pas seul. »</p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {friends.map((f) => {
+                const ami = f.ami;
+                const comp = getCompatibilityWith(ami);
+                return (
+                  <div key={f.friendshipId} onClick={() => { setAmiSelectionne(f); setVue('detail'); }}
+                    className="bg-card/40 border border-white/5 p-5 rounded-[28px] flex items-center gap-5 active:scale-[0.98] transition-all hover:bg-card/60 hover:border-gold/20 shadow-sm">
+                    <div className="w-14 h-14 rounded-full bg-night border border-white/5 flex items-center justify-center text-gold font-serif text-2xl shadow-inner">
+                      {ami?.nom?.charAt(0)}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-cream font-bold tracking-wide">{ami?.nom}</p>
+                        {ami?.isPremium && (
+                          <span className="text-gold text-[8px]">✦</span>
+                        )}
+                      </div>
+                      <p className="text-[9px] text-muted uppercase tracking-[0.1em]">@{ami?.username} · {ami?.signe_solaire}</p>
+                      {getTempsRelatif(ami?.last_seen_at) && (
+                        <p className="text-muted/40 text-[9px] mt-0.5">{getTempsRelatif(ami?.last_seen_at)}</p>
+                      )}
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                      <span className="text-xl font-serif" style={{ color: getScoreColor(comp.global) }}>{comp.global}%</span>
+                      <div className="w-8 h-0.5 mt-1 rounded-full opacity-30" style={{ backgroundColor: getScoreColor(comp.global) }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ─── BOUTON PARTAGER AVEC FEEDBACK ─── */}
+        <div className="relative">
+          <button 
+            onClick={handleShare} 
+            disabled={shareStatus === 'shared' || shareStatus === 'copied'}
+            className={`w-full border text-sm py-3 rounded-full active:scale-95 transition-all mt-4 ${
+              shareStatus === 'error' 
+                ? 'border-red-500/30 text-red-400 bg-red-500/5' 
+                : shareStatus === 'shared' || shareStatus === 'copied'
+                  ? 'border-green-500/30 text-green-400 bg-green-500/5'
+                  : 'border-gold/20 text-gold hover:bg-gold/5'
+            }`}
+          >
+            {shareStatus === 'shared' ? '✓ Partagé !' 
+              : shareStatus === 'copied' ? '✓ Lien copié !' 
+              : shareStatus === 'error' ? '✗ Erreur, réessaie'
+              : 'Partager mon profil astral'}
+          </button>
+        </div>
       </div>
     </div>
   );
