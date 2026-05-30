@@ -8,23 +8,41 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // ÉTAPE 1 — Lire la session locale immédiatement (sans réseau)
+    try {
+      const localSession = localStorage.getItem('sb-nygqrchwrhvgkhjjapue-auth-token');
+      if (localSession) {
+        const parsed = JSON.parse(localSession);
+        const sessionUser = parsed?.user || parsed?.session?.user;
+        if (sessionUser) {
+          setUser(sessionUser);
+          setLoading(false);
+          console.log('✅ Session locale trouvée:', sessionUser.id);
+        }
+      }
+    } catch (e) {
+      console.warn('Lecture session locale échouée:', e);
+    }
+
     const safetyTimer = setTimeout(() => {
       console.warn('Auth timeout — affichage forcé');
       setLoading(false);
     }, 8000);
 
+    // ÉTAPE 2 — Vérifier avec le serveur en arrière-plan
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
       clearTimeout(safetyTimer);
     }).catch(() => {
-      setUser(null);
+      console.warn('Vérification réseau échouée — session locale conservée');
       setLoading(false);
       clearTimeout(safetyTimer);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (event === 'SIGNED_OUT' && !navigator.onLine) return;
         setUser(session?.user ?? null);
         setLoading(false);
         clearTimeout(safetyTimer);
