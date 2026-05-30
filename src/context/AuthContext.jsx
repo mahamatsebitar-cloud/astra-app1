@@ -36,31 +36,27 @@ export function AuthProvider({ children }) {
     // ÉTAPE 2 — Vérification réseau
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth event:', event, 'online:', navigator.onLine);
-        
+        console.log('Auth event:', event, 'online:', navigator.onLine, 'session:', !!session?.user);
         clearTimeout(safetyTimer);
 
-        if (session?.user) {
-          // Session valide → toujours mettre à jour
-          setUser(session.user);
-          setLoading(false);
-        } else if (event === 'SIGNED_OUT') {
-          // Déconnexion explicite → effacer
-          setUser(null);
-          setLoading(false);
-        } else if (!navigator.onLine && localUserLoaded) {
-          // Hors connexion + session locale existante → ne rien changer
-          console.warn('Hors connexion — session locale conservée');
-          setLoading(false);
-        } else if (event === 'INITIAL_SESSION' && !session) {
-          // Première session nulle EN LIGNE → pas connecté
-          if (navigator.onLine) {
+        // Hors connexion → ignorer TOUS les événements sauf SIGNED_OUT explicite
+        if (!navigator.onLine) {
+          if (event === 'SIGNED_OUT') {
+            // Déconnexion volontaire même hors connexion → respecter
             setUser(null);
           }
+          // Tous les autres événements hors connexion → ignorer
           setLoading(false);
-        } else {
-          setLoading(false);
+          return;
         }
+
+        // En ligne → comportement normal
+        if (session?.user) {
+          setUser(session.user);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+        setLoading(false);
       }
     );
 
