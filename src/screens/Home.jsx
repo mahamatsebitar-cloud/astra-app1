@@ -240,20 +240,6 @@ const Home = ({ onHoroscope, onProfil }) => {
   return (
     <div className="pt-2 space-y-4 w-full pb-10">
 
-      {/* DEBUG TEMPORAIRE - À SUPPRIMER */}
-      {(() => {
-        const debug = localStorage.getItem('astra_debug_info');
-        if (!debug) return null;
-        const d = JSON.parse(debug);
-        return (
-          <div className="bg-red-900/80 text-white text-[10px] p-2 m-2 rounded">
-            <p>Keys: {d.allKeysCount}</p>
-            <p>AuthKeys: {JSON.stringify(d.authKeys)}</p>
-            <p>HasAuth: {String(d.hasAuthKey)}</p>
-          </div>
-        );
-      })()}
-
       {/* Header */}
       <div className="flex justify-between items-center px-1">
         <div>

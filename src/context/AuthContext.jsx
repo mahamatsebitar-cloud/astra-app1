@@ -16,14 +16,6 @@ export function AuthProvider({ children }) {
       const authKeys = allKeys.filter(k => 
         k.startsWith('sb-') && k.endsWith('-auth-token')
       );
-      
-      // DEBUG TEMPORAIRE — stocker pour affichage
-      localStorage.setItem('astra_debug_info', JSON.stringify({
-        allKeysCount: allKeys.length,
-        authKeys: authKeys,
-        hasAuthKey: authKeys.length > 0,
-        timestamp: new Date().toISOString()
-      }));
 
       if (authKeys.length > 0) {
         const parsed = JSON.parse(localStorage.getItem(authKeys[0]));
@@ -32,16 +24,6 @@ export function AuthProvider({ children }) {
           setUser(sessionUser);
           setLoading(false);
           localUserLoaded = true;
-          // Charger aussi le profil en cache si disponible
-          try {
-            const profileCached = localStorage.getItem(
-              'astra_profile_cache_' + sessionUser.id
-            );
-            if (profileCached) {
-              console.log('📦 Profil cache trouvé pour:', sessionUser.id);
-              // Le ProfileContext le chargera depuis son propre cache
-            }
-          } catch (e) {}
         }
       }
     } catch (e) {

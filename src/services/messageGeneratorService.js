@@ -15,22 +15,28 @@ const SIGNES = [
   "Sagittaire", "Capricorne", "Verseau", "Poissons"
 ];
 
-// ━━━ MÉMOIRE DES DERNIERS MESSAGES ━━━
-// Stocke les 3 dernières clés utilisées par utilisateur (identifié par date_naissance)
-const memoiresUtilisateurs = {};
+// ━━━ MÉMOIRE DES DERNIERS MESSAGES (persistée dans localStorage) ━━━
+const MEMOIRE_KEY = 'astra_msg_memoire_';
 
 function getMemoireUtilisateur(profileId) {
-  if (!memoiresUtilisateurs[profileId]) {
-    memoiresUtilisateurs[profileId] = [];
+  try {
+    const stored = localStorage.getItem(MEMOIRE_KEY + profileId);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
   }
-  return memoiresUtilisateurs[profileId];
 }
 
 function ajouterAMemoire(profileId, cle) {
-  const memoire = getMemoireUtilisateur(profileId);
-  memoire.push(cle);
-  if (memoire.length > 3) {
-    memoire.shift();
+  try {
+    const memoire = getMemoireUtilisateur(profileId);
+    memoire.push(cle);
+    if (memoire.length > 3) {
+      memoire.shift();
+    }
+    localStorage.setItem(MEMOIRE_KEY + profileId, JSON.stringify(memoire));
+  } catch {
+    // localStorage indisponible → ignorer silencieusement
   }
 }
 
