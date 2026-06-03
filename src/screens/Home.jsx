@@ -110,7 +110,12 @@ const Home = ({ onHoroscope, onProfil }) => {
   const { profile, loading } = useProfile(user?.id);
   const [selectedPlanet, setSelectedPlanet] = useState(null);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date();
+  const todayStr = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0')
+  ].join('-');
   const jourAnnee = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
 
   const planetes = useMemo(() => getPlanetesDuJour(), [todayStr]);

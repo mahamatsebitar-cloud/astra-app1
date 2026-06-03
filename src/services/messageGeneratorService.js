@@ -211,22 +211,39 @@ export function generateMessagePersonnalise(profile, targetDate = null) {
     const lat = profile.latitude || 48.8566;
     const lng = profile.longitude || 2.3522;
 
-    // ─── DATE CIBLE (aujourd'hui par défaut, ou targetDate pour demain) ───
+    // 1. Date
     const dateRef = targetDate || new Date();
-    const dateStr = dateRef.toISOString().split('T')[0];
+    const dateStr = [
+      dateRef.getFullYear(),
+      String(dateRef.getMonth() + 1).padStart(2, '0'),
+      String(dateRef.getDate()).padStart(2, '0')
+    ].join('-');
 
-    // ─── CACHE PAR JOUR ───
-    // Si on a déjà calculé le message pour aujourd'hui, le retourner directement
+    // 2. ProfileId (DOIT être avant le cache)
     const profileId = profile.date_naissance + (profile.heure_naissance || '12:00');
-    const jourCacheKey = MESSAGE_JOUR_KEY + profileId + '_' + dateStr;
+
+    // 3. Cache jour
+    const now = new Date();
+    const todayLocal = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0')
+    ].join('-');
+    const isToday = !targetDate;
+    const jourCacheKey = isToday
+      ? MESSAGE_JOUR_KEY + profileId + '_' + todayLocal
+      : null;
+
     try {
-      const cached = localStorage.getItem(jourCacheKey);
-      if (cached) {
-        console.log('📦 Message du jour depuis cache:', dateStr);
-        return JSON.parse(cached);
+      if (jourCacheKey) {
+        const cached = localStorage.getItem(jourCacheKey);
+        if (cached) {
+          return JSON.parse(cached);
+        }
       }
     } catch {}
 
+    // 4. Suite du calcul...
     // 1. Calcule le thème natal réel (toujours basé sur la date de naissance)
     const theme = getThemeNatal(
       profile.date_naissance,
@@ -289,11 +306,12 @@ export function generateMessagePersonnalise(profile, targetDate = null) {
       };
       // Sauvegarder pour toute la journée
       try {
-        localStorage.setItem(jourCacheKey, JSON.stringify(result));
-        // Nettoyer les caches des jours précédents (garder seulement aujourd'hui)
-        Object.keys(localStorage)
-          .filter(k => k.startsWith(MESSAGE_JOUR_KEY + profileId) && !k.endsWith(dateStr))
-          .forEach(k => localStorage.removeItem(k));
+        if (jourCacheKey) {
+          localStorage.setItem(jourCacheKey, JSON.stringify(result));
+          Object.keys(localStorage)
+            .filter(k => k.startsWith(MESSAGE_JOUR_KEY + profileId) && !k.endsWith(todayLocal))
+            .forEach(k => localStorage.removeItem(k));
+        }
       } catch {}
       return result;
     }
