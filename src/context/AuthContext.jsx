@@ -12,17 +12,26 @@ export function AuthProvider({ children }) {
 
     // ÉTAPE 1 — Session locale immédiate
     try {
-      const keys = Object.keys(localStorage).filter(k => 
+      const allKeys = Object.keys(localStorage);
+      const authKeys = allKeys.filter(k => 
         k.startsWith('sb-') && k.endsWith('-auth-token')
       );
-      if (keys.length > 0) {
-        const parsed = JSON.parse(localStorage.getItem(keys[0]));
+      
+      // DEBUG TEMPORAIRE — stocker pour affichage
+      localStorage.setItem('astra_debug_info', JSON.stringify({
+        allKeysCount: allKeys.length,
+        authKeys: authKeys,
+        hasAuthKey: authKeys.length > 0,
+        timestamp: new Date().toISOString()
+      }));
+
+      if (authKeys.length > 0) {
+        const parsed = JSON.parse(localStorage.getItem(authKeys[0]));
         const sessionUser = parsed?.user || parsed?.session?.user;
         if (sessionUser?.id) {
           setUser(sessionUser);
           setLoading(false);
           localUserLoaded = true;
-          console.log('✅ Session locale:', sessionUser.id);
         }
       }
     } catch (e) {
@@ -42,10 +51,8 @@ export function AuthProvider({ children }) {
         // Hors connexion → ignorer TOUS les événements sauf SIGNED_OUT explicite
         if (!navigator.onLine) {
           if (event === 'SIGNED_OUT') {
-            // Déconnexion volontaire même hors connexion → respecter
             setUser(null);
           }
-          // Tous les autres événements hors connexion → ignorer
           setLoading(false);
           return;
         }
