@@ -22,6 +22,13 @@ export function ProfileProvider({ children }) {
       const { data, error: err } = await getProfile(user.id);
       if (err) throw err;
       setProfile(data);
+      // NOUVEAU — cache local pour mode hors connexion
+      if (data) {
+        localStorage.setItem(
+          'astra_profile_cache_' + user.id,
+          JSON.stringify(data)
+        );
+      }
       setLoading(false);
     } catch (e) {
       if (tentative < 3) {
@@ -30,8 +37,18 @@ export function ProfileProvider({ children }) {
         setTimeout(() => fetchProfile(tentative + 1), delai);
         // loading reste true pendant le retry
       } else {
-        console.warn('Profile fetch abandonné après 3 tentatives');
-        setError(e.message);
+        // Après 3 échecs → essayer le cache local
+        try {
+          const cached = localStorage.getItem('astra_profile_cache_' + user.id);
+          if (cached) {
+            console.log('📦 Profil chargé depuis le cache local');
+            setProfile(JSON.parse(cached));
+          } else {
+            setError(e.message);
+          }
+        } catch {
+          setError(e.message);
+        }
         setLoading(false);
       }
     }

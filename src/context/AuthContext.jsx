@@ -32,6 +32,16 @@ export function AuthProvider({ children }) {
           setUser(sessionUser);
           setLoading(false);
           localUserLoaded = true;
+          // Charger aussi le profil en cache si disponible
+          try {
+            const profileCached = localStorage.getItem(
+              'astra_profile_cache_' + sessionUser.id
+            );
+            if (profileCached) {
+              console.log('📦 Profil cache trouvé pour:', sessionUser.id);
+              // Le ProfileContext le chargera depuis son propre cache
+            }
+          } catch (e) {}
         }
       }
     } catch (e) {
