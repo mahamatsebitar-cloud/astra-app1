@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { initRevenueCat } from '../services/revenuecatService';
 
 const AuthContext = createContext(null);
 
@@ -22,6 +23,8 @@ export function AuthProvider({ children }) {
         const sessionUser = parsed?.user || parsed?.session?.user;
         if (sessionUser?.id) {
           setUser(sessionUser);
+          // 🔥 INIT REVENUECAT avec l'ID local
+          initRevenueCat(sessionUser.id);
           setLoading(false);
           localUserLoaded = true;
         }
@@ -52,6 +55,8 @@ export function AuthProvider({ children }) {
         // En ligne → comportement normal
         if (session?.user) {
           setUser(session.user);
+          // 🔥 INIT REVENUECAT avec l'ID réseau
+          initRevenueCat(session.user.id);
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
         }
