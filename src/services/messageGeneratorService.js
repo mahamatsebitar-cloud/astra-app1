@@ -17,6 +17,7 @@ const SIGNES = [
 
 // ━━━ MÉMOIRE DES DERNIERS MESSAGES (persistée dans localStorage) ━━━
 const MEMOIRE_KEY = 'astra_msg_memoire_';
+const MESSAGE_JOUR_KEY = 'astra_msg_jour_';
 
 function getMemoireUtilisateur(profileId) {
   try {
@@ -214,6 +215,18 @@ export function generateMessagePersonnalise(profile, targetDate = null) {
     const dateRef = targetDate || new Date();
     const dateStr = dateRef.toISOString().split('T')[0];
 
+    // ─── CACHE PAR JOUR ───
+    // Si on a déjà calculé le message pour aujourd'hui, le retourner directement
+    const profileId = profile.date_naissance + (profile.heure_naissance || '12:00');
+    const jourCacheKey = MESSAGE_JOUR_KEY + profileId + '_' + dateStr;
+    try {
+      const cached = localStorage.getItem(jourCacheKey);
+      if (cached) {
+        console.log('📦 Message du jour depuis cache:', dateStr);
+        return JSON.parse(cached);
+      }
+    } catch {}
+
     // 1. Calcule le thème natal réel (toujours basé sur la date de naissance)
     const theme = getThemeNatal(
       profile.date_naissance,
@@ -237,8 +250,6 @@ export function generateMessagePersonnalise(profile, targetDate = null) {
     let maisonTransit = null;
     let clePersonnalisee = null;
     let lecturePersonnalisee = null;
-    
-    const profileId = profile.date_naissance + (profile.heure_naissance || '12:00');
     
     for (let offset = 0; offset < planetesDisponibles.length; offset++) {
       const indexPlanete = (seed + offset) % planetesDisponibles.length;
@@ -269,13 +280,22 @@ export function generateMessagePersonnalise(profile, targetDate = null) {
     // 6. Assemble le message final
     if (lecturePersonnalisee) {
       ajouterAMemoire(profileId, clePersonnalisee);
-      return {
+      const result = {
         message: lecturePersonnalisee,
         planete: planeteSignificative,
         maison: maisonTransit,
         significationMaison: SIGNIFICATIONS_MAISONS[maisonTransit],
         source: 'maison'
       };
+      // Sauvegarder pour toute la journée
+      try {
+        localStorage.setItem(jourCacheKey, JSON.stringify(result));
+        // Nettoyer les caches des jours précédents (garder seulement aujourd'hui)
+        Object.keys(localStorage)
+          .filter(k => k.startsWith(MESSAGE_JOUR_KEY + profileId) && !k.endsWith(dateStr))
+          .forEach(k => localStorage.removeItem(k));
+      } catch {}
+      return result;
     }
 
     return null;
