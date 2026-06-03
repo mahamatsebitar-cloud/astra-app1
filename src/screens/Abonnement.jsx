@@ -1,11 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useSubscription } from '../hooks/useSubscription';
 
-const PLANS = {
-  mensuel: { id: 'etoile_mensuel', price: '9,99 €', period: '/mois', billing: 'mensuel' },
-  annuel: { id: 'etoile_annuel', price: '79,99 €', period: '/an', billing: 'annuel', savings: '–33%', detail: 'soit 6,67€/mois' }
-};
-
 const FEATURES = [
   'Horoscope hebdomadaire & mensuel',
   'Thème natal entièrement interactif',
@@ -16,48 +11,95 @@ const FEATURES = [
 ];
 
 export default function Abonnement({ onBack, onSubscribed }) {
-  const [planKey, setPlanKey] = useState('mensuel');
+  const [planKey, setPlanKey] = useState('annuel'); // 🔥 Par défaut annuel (meilleur prix + trial)
   const [isProcessing, setIsProcessing] = useState(false);
   const [localError, setLocalError] = useState(null);
 
   const {
+    offerings,           // 🔥 NOUVEAU : packages RevenueCat
     isFree,
     isTrial,
     isActive,
     daysRemaining,
     planLabel,
-    startTrial,
+    purchase,            // 🔥 NOUVEAU : acheter un package
+    restore,             // 🔥 NOUVEAU : restaurer les achats
     loading: subLoading
   } = useSubscription();
 
-  const handleAction = useCallback(async () => {
-    console.log('[Abonnement] handleAction called');
+  // 🔥 Helper : récupère le bon package selon le plan choisi
+  const getSelectedPackage = useCallback(() => {
+    if (!offerings) return null;
+    return planKey === 'annuel' ? offerings.annual : offerings.monthly;
+  }, [offerings, planKey]);
+
+  // 🔥 Helper : prix formaté depuis RevenueCat
+  const getPriceDisplay = useCallback(() => {
+    const pkg = getSelectedPackage();
+    if (!pkg) return planKey === 'annuel' ? '79,99 €' : '9,99 €';
+    return pkg.priceString;
+  }, [getSelectedPackage, planKey]);
+
+  // 🔥 Action principale : ACHETER
+  const handlePurchase = useCallback(async () => {
+    console.log('[Abonnement] handlePurchase called, plan:', planKey);
+    setIsProcessing(true);
+    setLocalError(null);
+    
+    const pkg = getSelectedPackage();
+    if (!pkg) {
+      setLocalError("Les offres ne sont pas disponibles. Réessaie plus tard.");
+      setIsProcessing(false);
+      return;
+    }
+
+    try {
+      console.log('[Abonnement] Purchasing package:', pkg.identifier);
+      const result = await purchase(pkg);
+      console.log('[Abonnement] Purchase result:', result);
+      
+      if (result?.success) {
+        console.log('[Abonnement] Purchase successful!');
+        if (onSubscribed) onSubscribed();
+      } else if (result?.cancelled) {
+        console.log('[Abonnement] User cancelled purchase');
+        // Pas d'erreur, l'utilisateur a juste fermé
+      } else {
+        throw new Error(result?.error || 'Erreur lors de l\'achat');
+      }
+    } catch (err) {
+      const errorMessage = err?.message || JSON.stringify(err);
+      console.error('[Abonnement] Purchase Error:', err);
+      setLocalError("Impossible de finaliser : " + errorMessage);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [purchase, getSelectedPackage, planKey, onSubscribed]);
+
+  // 🔥 Action : RESTAURER les achats
+  const handleRestore = useCallback(async () => {
     setIsProcessing(true);
     setLocalError(null);
     
     try {
-      console.log('[Abonnement] Calling startTrial...');
-      const result = await startTrial();
-      console.log('[Abonnement] startTrial result:', result);
-      
-      if (result?.error) {
-        console.error('[Abonnement] startTrial returned error:', result.error);
-        const errorMsg = typeof result.error === 'object' 
-          ? JSON.stringify(result.error) 
-          : String(result.error);
-        throw new Error(errorMsg);
+      const result = await restore();
+      if (result?.success) {
+        if (onSubscribed) onSubscribed();
+      } else {
+        setLocalError("Aucun achat trouvé à restaurer.");
       }
-      
-      console.log('[Abonnement] Trial started successfully');
-      if (onSubscribed) onSubscribed();
     } catch (err) {
-      const errorMessage = err?.message || err?.error?.message || JSON.stringify(err);
-      console.error('[Abonnement] Subscription Error:', err);
-      setLocalError("Impossible d'activer l'essai : " + errorMessage);
+      setLocalError("Erreur de restauration : " + err.message);
     } finally {
       setIsProcessing(false);
     }
-  }, [startTrial, onSubscribed]);
+  }, [restore, onSubscribed]);
+
+  // 🔥 Action : GÉRER l'abonnement (redirige vers Google Play)
+  const handleManage = useCallback(() => {
+    // Ouvre les paramètres d'abonnement Google Play
+    window.open('https://play.google.com/store/account/subscriptions', '_blank');
+  }, []);
 
   if (subLoading) {
     return (
@@ -97,39 +139,76 @@ export default function Abonnement({ onBack, onSubscribed }) {
         {(isFree || isTrial) && (
           <section className="space-y-4">
             <h3 className="text-muted text-[10px] tracking-widest uppercase pl-1">Choisir une constellation</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {Object.entries(PLANS).map(([key, plan]) => (
-                <button key={key} onClick={() => setPlanKey(key)}
+            
+            {/* 🔥 Offres dynamiques depuis RevenueCat */}
+            {offerings ? (
+              <div className="grid grid-cols-2 gap-4">
+                {/* Mensuel */}
+                <button 
+                  onClick={() => setPlanKey('mensuel')}
                   className={`relative flex flex-col p-5 rounded-2xl border transition-all duration-300 text-left ${
-                    planKey === key 
+                    planKey === 'mensuel' 
                       ? 'border-gold bg-gold/5 shadow-[0_0_20px_rgba(201,164,96,0.15)]' 
                       : 'border-white/10 bg-white/5 opacity-60'
                   }`}>
-                  {plan.savings && (
-                    <span className="absolute -top-2.5 right-3 bg-gold text-night text-[10px] px-2 py-0.5 rounded-full font-bold">{plan.savings}</span>
-                  )}
-                  <span className="text-xs mb-1 font-medium">{plan.billing}</span>
-                  <span className="text-xl font-serif">{plan.price}</span>
-                  <span className="text-[10px] text-muted">{plan.period}</span>
-                  {plan.detail && <p className="text-[9px] text-gold/80 mt-2">{plan.detail}</p>}
+                  <span className="text-xs mb-1 font-medium">mensuel</span>
+                  <span className="text-xl font-serif">
+                    {offerings.monthly?.priceString || '9,99 €'}
+                  </span>
+                  <span className="text-[10px] text-muted">/mois</span>
                 </button>
-              ))}
-            </div>
+
+                {/* Annuel */}
+                <button 
+                  onClick={() => setPlanKey('annuel')}
+                  className={`relative flex flex-col p-5 rounded-2xl border transition-all duration-300 text-left ${
+                    planKey === 'annuel' 
+                      ? 'border-gold bg-gold/5 shadow-[0_0_20px_rgba(201,164,96,0.15)]' 
+                      : 'border-white/10 bg-white/5 opacity-60'
+                  }`}>
+                  <span className="absolute -top-2.5 right-3 bg-gold text-night text-[10px] px-2 py-0.5 rounded-full font-bold">–33%</span>
+                  <span className="text-xs mb-1 font-medium">annuel</span>
+                  <span className="text-xl font-serif">
+                    {offerings.annual?.priceString || '79,99 €'}
+                  </span>
+                  <span className="text-[10px] text-muted">/an</span>
+                  <p className="text-[9px] text-gold/80 mt-2">soit 6,67€/mois</p>
+                </button>
+              </div>
+            ) : (
+              <div className="text-center text-muted text-sm py-4">
+                Chargement des offres...
+              </div>
+            )}
           </section>
         )}
 
         <section className="space-y-4">
-          {localError && <p className="text-red-400 text-[10px] text-center bg-red-400/10 py-2 rounded-lg">{localError}</p>}
+          {localError && (
+            <p className="text-red-400 text-[10px] text-center bg-red-400/10 py-2 rounded-lg">
+              {localError}
+            </p>
+          )}
 
           {isFree && (
             <>
-              <button onClick={handleAction} disabled={isProcessing}
+              <button 
+                onClick={handlePurchase} 
+                disabled={isProcessing || !offerings}
                 className="w-full bg-gold hover:bg-gold-light text-night font-serif font-bold rounded-full py-4 text-sm transition-all shadow-lg shadow-gold/20 active:scale-95 disabled:opacity-50">
                 {isProcessing ? 'Connexion aux astres...' : 'Essayer 7 jours gratuits'}
               </button>
               <p className="text-muted text-[10px] text-center">
-                Puis {PLANS[planKey].price}{PLANS[planKey].period} · Sans engagement
+                Puis {getPriceDisplay()}{planKey === 'annuel' ? '/an' : '/mois'} · Sans engagement
               </p>
+              
+              {/* 🔥 Bouton restaurer */}
+              <button 
+                onClick={handleRestore}
+                disabled={isProcessing}
+                className="w-full text-gold/60 text-[10px] underline hover:text-gold disabled:opacity-50">
+                Restaurer mes achats
+              </button>
             </>
           )}
 
@@ -139,8 +218,10 @@ export default function Abonnement({ onBack, onSubscribed }) {
                 <p className="text-green-400 text-sm font-serif mb-1 italic">✓ Période d'essai active</p>
                 <p className="text-muted text-[11px]">Il vous reste {daysRemaining} jours de privilèges.</p>
               </div>
-              <button className="w-full bg-gold text-night font-serif font-bold rounded-full py-4 text-sm shadow-xl">
-                Confirmer l'accès Premium
+              <button 
+                onClick={handleManage}
+                className="w-full bg-gold text-night font-serif font-bold rounded-full py-4 text-sm shadow-xl">
+                Gérer mon abonnement
               </button>
             </div>
           )}
@@ -152,7 +233,9 @@ export default function Abonnement({ onBack, onSubscribed }) {
                 <p className="text-cream text-xs">{planLabel}</p>
                 <p className="text-muted text-[10px] mt-2 italic">Prochaine lunaison dans {daysRemaining} jours</p>
               </div>
-              <button className="w-full border border-gold/30 text-gold/80 font-sans rounded-full py-3 text-xs hover:bg-gold/5 transition-colors">
+              <button 
+                onClick={handleManage}
+                className="w-full border border-gold/30 text-gold/80 font-sans rounded-full py-3 text-xs hover:bg-gold/5 transition-colors">
                 Gérer mon abonnement
               </button>
             </div>
