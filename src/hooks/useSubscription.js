@@ -38,7 +38,9 @@ export function useSubscription() {
         const entitlement = customerInfo.entitlements.active['premium'];
         setSubscription({
           status: isPremium ? (entitlement?.periodType === 'trial' ? 'trial' : 'active') : 'free',
-          plan: entitlement?.productIdentifier?.includes('annual') ? 'etoile_annuel' : 'etoile_mensuel',
+          plan: entitlement?.productIdentifier?.includes('annual') || entitlement?.productIdentifier?.includes('annuel') 
+            ? 'etoile_annuel' 
+            : 'etoile_mensuel',
           current_period_end: entitlement?.expirationDate,
           trial_ends_at: entitlement?.periodType === 'trial' ? entitlement?.expirationDate : null,
           platform: 'android'
@@ -100,6 +102,7 @@ export function useSubscription() {
   }, [subscription]);
 
   // 4. Actions RevenueCat
+  // 🔥 MODIFIÉ : utilise le package entier, pas juste le produit
   const purchase = useCallback(async (packageToBuy) => {
     if (!user?.id) return { success: false, error: 'Non connecté' };
     
@@ -126,20 +129,18 @@ export function useSubscription() {
     return result;
   }, [user?.id, loadSubscription]);
 
-  // 5. Compatibilité ancienne API (startTrial devient purchase du package avec trial)
+  // 5. Compatibilité ancienne API
+  // 🔥 MODIFIÉ : utilise le package entier pour l'achat
   const startTrial = useCallback(async () => {
     // RevenueCat gère le trial automatiquement si configuré dans le dashboard
     // On achète le package annual (qui a le trial configuré)
-    if (!offerings?.annual) {
+    if (!offerings?.annualPackage) {
       return { success: false, error: 'Offre non disponible' };
     }
-    return purchase(offerings.annual);
+    return purchase(offerings.annualPackage);
   }, [offerings, purchase]);
 
   const cancelSubscription = useCallback(async () => {
-    // RevenueCat ne permet pas d'annuler depuis l'app
-    // L'utilisateur doit aller dans les paramètres du store
-    // On retourne juste un message informatif
     return { 
       success: false, 
       error: 'Veuillez gérer votre abonnement dans les paramètres Google Play',
@@ -148,13 +149,12 @@ export function useSubscription() {
   }, []);
 
   const checkFeature = useCallback(async (key) => {
-    // Pour l'instant, simple : si premium, tout est accessible
     return isPremiumUser;
   }, [isPremiumUser]);
 
   return {
     subscription,
-    offerings,           // 🔥 NOUVEAU : packages disponibles pour l'UI
+    offerings,           // Contient monthly, annual (produits) + monthlyPackage, annualPackage (packages)
     isPremiumUser,
     loading,
     error,
@@ -163,10 +163,10 @@ export function useSubscription() {
     isFree: !subscription || subscription?.status === 'free',
     daysRemaining,
     planLabel,
-    purchase,            // 🔥 NOUVEAU : acheter un package spécifique
-    restore,             // 🔥 NOUVEAU : restaurer les achats
-    startTrial,          // 🔥 MODIFIÉ : achète le package avec trial
-    cancelSubscription,  // 🔥 MODIFIÉ : redirige vers le store
+    purchase,            // Accepte un package entier (pas juste un produit)
+    restore,
+    startTrial,          // Achète le package annual avec trial
+    cancelSubscription,
     checkFeature,
     refreshSubscription: loadSubscription
   };

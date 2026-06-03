@@ -5,7 +5,18 @@ import { Purchases } from '@revenuecat/purchases-capacitor';
 import { Toast } from '@capacitor/toast';
 import { supabase } from '../lib/supabase';
 
-const REVENUECAT_API_KEY = 'test_tPMuaHsmPjcUjteqEMNSEhienIKn';
+const REVENUECAT_API_KEY = 'goog_CePyjXRDK1cbPXxbJNeDfjMMN';
+
+// ━━━ MAPPING IDENTIFIANTS REVENUECAT → LOGIQUE MÉTIER ━━━
+// RevenueCat utilise $rc_monthly / $rc_annual dans l'offering "défaut"
+// On map vers nos identifiants internes pour Supabase
+
+const PRODUCT_MAP = {
+  '$rc_monthly': { plan: 'etoile_mensuel', display: 'mensuel' },
+  '$rc_annual':  { plan: 'etoile_annuel',  display: 'annuel' },
+  'mensuels':    { plan: 'etoile_mensuel', display: 'mensuel' },
+  'annuelles':   { plan: 'etoile_annuel',  display: 'annuel' }
+};
 
 // ━━━ 1. INITIALISATION ━━━
 
@@ -42,12 +53,34 @@ export async function getOfferings() {
 
     const current = offerings.current;
     
-    await Toast.show({ text: 'RC offres OK ✅ (' + (current.availablePackages?.length || 0) + ')', duration: 'short' });
+    // 🔥 Debug : log tous les packages disponibles
+    console.log('[RevenueCat] Packages disponibles:', current.availablePackages?.map(p => ({
+      identifier: p.identifier,
+      productId: p.product?.identifier,
+      price: p.product?.priceString
+    })));
+    
+    await Toast.show({ 
+      text: 'RC offres OK ✅ (' + (current.availablePackages?.length || 0) + ')', 
+      duration: 'short' 
+    });
+    
+    // 🔥 Cherche les packages par identifier RevenueCat ($rc_monthly, $rc_annual)
+    // ou fallback sur les identifiants produit (mensuels, annuelles)
+    const monthlyPkg = current.availablePackages?.find(p => 
+      p.identifier === '$rc_monthly' || p.product?.identifier === 'mensuels'
+    );
+    const annualPkg = current.availablePackages?.find(p => 
+      p.identifier === '$rc_annual' || p.product?.identifier === 'annuelles'
+    );
     
     return {
-      monthly: current.monthly?.product,
-      annual: current.annual?.product,
-      availablePackages: current.availablePackages
+      monthly: monthlyPkg?.product || current.monthly?.product,
+      annual: annualPkg?.product || current.annual?.product,
+      availablePackages: current.availablePackages,
+      // 🔥 On garde aussi les packages entiers pour l'achat
+      monthlyPackage: monthlyPkg || current.monthly,
+      annualPackage: annualPkg || current.annual
     };
   } catch (e) {
     await Toast.show({ text: 'RC offres ❌ ' + (e.message || e).substring(0, 60), duration: 'long' });
@@ -127,7 +160,12 @@ export async function syncSubscriptionToSupabase(userId, customerInfo) {
 
     if (entitlement) {
       status = entitlement.periodType === 'trial' ? 'trial' : 'active';
-      plan = entitlement.productIdentifier.includes('annual') ? 'etoile_annuel' : 'etoile_mensuel';
+      
+      // 🔥 Map l'identifiant produit RevenueCat vers notre plan interne
+      const productId = entitlement.productIdentifier || '';
+      const mapped = PRODUCT_MAP[productId];
+      plan = mapped?.plan || (productId.includes('annual') || productId.includes('annuel') ? 'etoile_annuel' : 'etoile_mensuel');
+      
       currentPeriodEnd = entitlement.expirationDate;
       if (status === 'trial') trialEndsAt = entitlement.expirationDate;
     }
@@ -171,7 +209,7 @@ export async function syncSubscriptionToSupabase(userId, customerInfo) {
     await supabase.from('transactions').insert({
       user_id: userId,
       type: status === 'trial' ? 'trial_start' : 'purchase',
-      amount_cents: 0, // RevenueCat gère les prix
+      amount_cents: 0,
       platform: 'android',
       external_id: customerInfo.originalAppUserId
     });

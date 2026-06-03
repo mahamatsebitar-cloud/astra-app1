@@ -11,41 +11,48 @@ const FEATURES = [
 ];
 
 export default function Abonnement({ onBack, onSubscribed }) {
-  const [planKey, setPlanKey] = useState('annuel'); // 🔥 Par défaut annuel (meilleur prix + trial)
+  const [planKey, setPlanKey] = useState('annuel');
   const [isProcessing, setIsProcessing] = useState(false);
   const [localError, setLocalError] = useState(null);
 
   const {
-    offerings,           // 🔥 NOUVEAU : packages RevenueCat
+    offerings,
     isFree,
     isTrial,
     isActive,
     daysRemaining,
     planLabel,
-    purchase,            // 🔥 NOUVEAU : acheter un package
-    restore,             // 🔥 NOUVEAU : restaurer les achats
+    purchase,
+    restore,
     loading: subLoading
   } = useSubscription();
 
-  // 🔥 Helper : récupère le bon package selon le plan choisi
+  // 🔥 Helper : récupère le PACKAGE entier selon le plan choisi (pas juste le produit)
   const getSelectedPackage = useCallback(() => {
+    if (!offerings) return null;
+    return planKey === 'annuel' ? offerings.annualPackage : offerings.monthlyPackage;
+  }, [offerings, planKey]);
+
+  // 🔥 Helper : récupère le PRODUIT pour l'affichage du prix
+  const getSelectedProduct = useCallback(() => {
     if (!offerings) return null;
     return planKey === 'annuel' ? offerings.annual : offerings.monthly;
   }, [offerings, planKey]);
 
   // 🔥 Helper : prix formaté depuis RevenueCat
   const getPriceDisplay = useCallback(() => {
-    const pkg = getSelectedPackage();
-    if (!pkg) return planKey === 'annuel' ? '79,99 €' : '9,99 €';
-    return pkg.priceString;
-  }, [getSelectedPackage, planKey]);
+    const product = getSelectedProduct();
+    if (!product) return planKey === 'annuel' ? '79,99 €' : '9,99 €';
+    return product.priceString;
+  }, [getSelectedProduct, planKey]);
 
-  // 🔥 Action principale : ACHETER
+  // 🔥 Action principale : ACHETER (passe le PACKAGE entier)
   const handlePurchase = useCallback(async () => {
     console.log('[Abonnement] handlePurchase called, plan:', planKey);
     setIsProcessing(true);
     setLocalError(null);
     
+    // 🔥 Utilise le PACKAGE entier pour l'achat
     const pkg = getSelectedPackage();
     if (!pkg) {
       setLocalError("Les offres ne sont pas disponibles. Réessaie plus tard.");
@@ -54,8 +61,8 @@ export default function Abonnement({ onBack, onSubscribed }) {
     }
 
     try {
-      console.log('[Abonnement] Purchasing package:', pkg.identifier);
-      const result = await purchase(pkg);
+      console.log('[Abonnement] Purchasing package:', pkg.identifier || pkg.product?.identifier);
+      const result = await purchase(pkg); // 🔥 Passe le package entier
       console.log('[Abonnement] Purchase result:', result);
       
       if (result?.success) {
@@ -63,7 +70,6 @@ export default function Abonnement({ onBack, onSubscribed }) {
         if (onSubscribed) onSubscribed();
       } else if (result?.cancelled) {
         console.log('[Abonnement] User cancelled purchase');
-        // Pas d'erreur, l'utilisateur a juste fermé
       } else {
         throw new Error(result?.error || 'Erreur lors de l\'achat');
       }
@@ -97,7 +103,6 @@ export default function Abonnement({ onBack, onSubscribed }) {
 
   // 🔥 Action : GÉRER l'abonnement (redirige vers Google Play)
   const handleManage = useCallback(() => {
-    // Ouvre les paramètres d'abonnement Google Play
     window.open('https://play.google.com/store/account/subscriptions', '_blank');
   }, []);
 
