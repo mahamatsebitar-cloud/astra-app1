@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Politique de Confidentialité — Astra</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #06081A;
+      color: #F0ECE0;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 340px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background-color: rgba(6, 8, 26, 0.95);
+      backdrop-filter: blur(4px);
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(240, 236, 224, 0.08);
+    }
+
+    .back-link {
+      color: rgba(240, 236, 224, 0.5);
+      font-size: 11px;
+      text-decoration: none;
+      display: inline-block;
+      margin-bottom: 12px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: #F0ECE0;
+    }
+
+    .header h1 {
+      color: #C9A460;
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 400;
+    }
+
+    /* Content */
+    .content {
+      flex: 1;
+      padding: 20px 20px 80px;
+    }
+
+    .section {
+      background-color: #0B0E2A;
+      border: 1px solid rgba(240, 236, 224, 0.08);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section-accent {
+      border-color: rgba(201, 164, 96, 0.2);
+    }
+
+    .section h2 {
+      color: #C9A460;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      font-weight: 400;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: #C9A460;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .section p {
+      color: rgba(240, 236, 224, 0.6);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .section p strong {
+      color: #F0ECE0;
+      font-weight: 600;
+    }
+
+    /* Table */
+    .table-wrapper {
+      overflow-x: auto;
+      margin-bottom: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9px;
+    }
+
+    th {
+      color: #C9A460;
+      text-align: left;
+      padding: 8px 8px 8px 0;
+      border-bottom: 1px solid rgba(240, 236, 224, 0.08);
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+      font-weight: 400;
+    }
+
+    td {
+      color: rgba(240, 236, 224, 0.6);
+      padding: 8px 8px 8px 0;
+      border-bottom: 1px solid rgba(240, 236, 224, 0.03);
+    }
+
+    td strong {
+      color: #F0ECE0;
+      font-weight: 600;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .table-note {
+      color: rgba(240, 236, 224, 0.35);
+      font-size: 8px;
+      font-style: italic;
+      line-height: 1.4;
+    }
+
+    /* Rights grid */
+    .rights-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .right-item {
+      background-color: #141731;
+      border: 1px solid rgba(240, 236, 224, 0.08);
+      border-radius: 12px;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .right-item p {
+      color: #F0ECE0;
+      font-size: 9px;
+      margin: 0;
+    }
+
+    /* Gold text */
+    .gold {
+      color: #C9A460;
+    }
+
+    /* Footer */
+    .footer {
+      padding: 16px 20px;
+      text-align: center;
+      border-top: 1px solid rgba(240, 236, 224, 0.05);
+    }
+
+    .footer p {
+      color: rgba(240, 236, 224, 0.25);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+    }
+
+    .footer p + p {
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Header -->
+    <div class="header">
+      <a href="#" class="back-link">← Retour</a>
+      <h1>Confidentialité & Sécurité</h1>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      
+      <!-- 1. Transparence -->
+      <div class="section">
+        <h2>1. Transparence</h2>
+        <p>
+          Conformément aux règles du <strong>Google Play Store</strong> et au RGPD, Astra s'engage à protéger votre vie privée. Nous ne collectons que les données strictement nécessaires à l'expérience astrologique.
+        </p>
+      </div>
+
+      <!-- 2. Données et Finalités -->
+      <div class="section">
+        <h2>2. Données et Finalités</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Nature</th>
+                <th>Usage</th>
+                <th>Base</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Identité</strong></td>
+                <td>Compte & Sync</td>
+                <td>Contrat</td>
+              </tr>
+              <tr>
+                <td><strong>Naissance</strong></td>
+                <td>Calcul Astro</td>
+                <td>Consentement</td>
+              </tr>
+              <tr>
+                <td><strong>Position</strong></td>
+                <td>Ascendant</td>
+                <td>Consentement</td>
+              </tr>
+              <tr>
+                <td><strong>Technique</strong></td>
+                <td>Stabilité App</td>
+                <td>Légitime</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="table-note">
+          Note : Vos données de naissance sont considérées comme sensibles et ne sont jamais partagées avec des tiers.
+        </p>
+      </div>
+
+      <!-- 3. Paiements sécurisés -->
+      <div class="section section-accent">
+        <h2>
+          <span class="pulse-dot"></span>
+          3. Paiements sécurisés
+        </h2>
+        <p>
+          Toute transaction pour l'abonnement <strong>Astra Étoile</strong> est gérée par le système de facturation de <strong>Google Play Billing</strong>. Astra ne stocke aucune donnée bancaire. Vos informations de paiement sont sécurisées par l'infrastructure de Google.
+        </p>
+      </div>
+
+      <!-- 4. Stockage -->
+      <div class="section">
+        <h2>4. Stockage (UE)</h2>
+        <p>
+          Vos données sont chiffrées et stockées via <strong>Supabase</strong> sur des serveurs situés en Allemagne (Frankfurt, Union Européenne), garantissant une protection optimale selon les standards RGPD.
+        </p>
+      </div>
+
+      <!-- 5. Contrôle de vos données -->
+      <div class="section">
+        <h2>5. Contrôle de vos données</h2>
+        <div class="rights-grid">
+          <div class="right-item"><p>Accès</p></div>
+          <div class="right-item"><p>Rectification</p></div>
+          <div class="right-item"><p>Effacement</p></div>
+          <div class="right-item"><p>Opposition</p></div>
+        </div>
+        <p>
+          Vous pouvez exercer vos droits ou demander la <strong>suppression définitive</strong> de votre compte et de toutes vos données associées en nous écrivant à : <span class="gold">contact@astra-app.fr</span> ou via les paramètres de l'application.
+        </p>
+      </div>
+
+      <!-- 6. Cookies & SDK -->
+      <div class="section">
+        <h2>6. Cookies & SDK</h2>
+        <p>
+          Nous n'utilisons aucun cookie de suivi publicitaire. L'application utilise uniquement les identifiants techniques nécessaires à l'authentification et au bon fonctionnement des services Google Play.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Mise à jour : 05/06/2026</p>
+      <p>Contact DPO : annourabdel25@gmail.com</p>
+    </div>
+
+  </div>
+</body>
+</html>
