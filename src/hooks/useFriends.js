@@ -19,7 +19,11 @@ const useFriends = () => {
 
   // ━━━ CHARGEMENT INITIAL ━━━
   const loadAll = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log('[useFriends] Pas de user.id, skip loadAll');
+      return;
+    }
+    console.log('[useFriends] loadAll pour user:', user.id);
     setLoading(true);
     try {
       const [friendsRes, pendingRes, feedRes] = await Promise.all([
@@ -27,17 +31,26 @@ const useFriends = () => {
         friendService.getPendingRequests(user.id),
         friendService.getActivityFeed(user.id)
       ]);
+      
+      console.log('[useFriends] friendsRes:', friendsRes);
+      console.log('[useFriends] pendingRes:', pendingRes);
+      console.log('[useFriends] feedRes:', feedRes);
+      
       setFriends(friendsRes.data || []);
       setPendingRequests(pendingRes.data || []);
       setActivityFeed(feedRes.data || []);
     } catch (err) {
+      console.error('[useFriends] Erreur loadAll:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   }, [user?.id]);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => { 
+    console.log('[useFriends] useEffect loadAll triggered');
+    loadAll(); 
+  }, [loadAll]);
 
   // Met à jour last_seen à chaque montage
   useEffect(() => {
@@ -111,7 +124,6 @@ const useFriends = () => {
   }, [user?.id]);
 
   // ━━━ GÉNÉRER LIEN DE PARTAGE ━━━
-  // Option B : fallback sur user.id si pas de share_token
   const getShareLink = useCallback(() => {
     const token = profile?.share_token || user?.id;
     if (!token) return null;

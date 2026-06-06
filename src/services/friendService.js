@@ -85,23 +85,22 @@ export const sendFriendRequest = async (senderId, receiverId) => {
       }
     }
 
-    // ─── VÉRIFICATION LIMITE (1 ami max pour non-premium) ───
-    const { data: friendsCount } = await supabase
-      .from('friendships')
-      .select('id', { count: 'exact' })
-      .or(`sender_id.eq.${senderId},receiver_id.eq.${senderId}`)
-      .eq('status', 'accepted');
-
-    // NOUVEAU : check via premium_features au lieu du statut subscription
-    const hasUnlimitedFriends = await hasFeatureAccess(senderId, 'connexions_illimitees');
-
-    if (!hasUnlimitedFriends && (friendsCount?.length || 0) >= 1) {
-      return { 
-        data: null, 
-        error: 'LIMIT_REACHED',
-        limitReached: true 
-      };
-    }
+    // 🆓 MODE GRATUIT — limite amis désactivée
+    // const { data: friendsCount } = await supabase
+    //   .from('friendships')
+    //   .select('id', { count: 'exact' })
+    //   .or(`sender_id.eq.${senderId},receiver_id.eq.${senderId}`)
+    //   .eq('status', 'accepted');
+    // 
+    // const hasUnlimitedFriends = await hasFeatureAccess(senderId, 'connexions_illimitees');
+    // 
+    // if (!hasUnlimitedFriends && (friendsCount?.length || 0) >= 1) {
+    //   return { 
+    //     data: null, 
+    //     error: 'LIMIT_REACHED',
+    //     limitReached: true 
+    //   };
+    // }
 
     const { data, error } = await supabase
       .from('friendships')
@@ -238,20 +237,43 @@ export const getFriends = async (userId) => {
 // ━━━ 7. DEMANDES EN ATTENTE ━━━
 export const getPendingRequests = async (userId) => {
   try {
+    // 🔥 DEBUG SESSION : Vérifier qui est authentifié côté Supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('[friendService] 🔐 Session user id:', session?.user?.id);
+    console.log('[friendService] 🔐 Param userId:', userId);
+    console.log('[friendService] 🔐 Match ?', session?.user?.id === userId);
+    console.log('[friendService] 🔐 Session exists ?', !!session);
+
+    console.log('[friendService] getPendingRequests pour userId:', userId);
+    
     const { data: friendships, error } = await supabase
       .from('friendships')
       .select('id, created_at, sender_id')
       .eq('receiver_id', userId)
       .eq('status', 'pending');
 
-    if (error) throw error;
-    if (!friendships?.length) return { data: [], error: null };
+    console.log('[friendService] friendships brute:', friendships);
+    console.log('[friendService] error:', error);
+
+    if (error) {
+      console.error('[friendService] Erreur Supabase:', error);
+      throw error;
+    }
+    
+    if (!friendships?.length) {
+      console.log('[friendService] Aucune demande en attente');
+      return { data: [], error: null };
+    }
 
     const senderIds = friendships.map(f => f.sender_id);
+    console.log('[friendService] senderIds:', senderIds);
+    
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, nom, signe_solaire, username')
       .in('id', senderIds);
+
+    console.log('[friendService] profiles des senders:', profiles);
 
     const result = friendships.map(f => ({
       id: f.id,
@@ -259,9 +281,10 @@ export const getPendingRequests = async (userId) => {
       sender: profiles?.find(p => p.id === f.sender_id)
     }));
 
+    console.log('[friendService] result final:', result);
     return { data: result, error: null };
   } catch (error) {
-    console.error("Erreur demandes en attente:", error.message);
+    console.error("[friendService] Erreur demandes en attente:", error.message);
     return { data: null, error: error.message };
   }
 };

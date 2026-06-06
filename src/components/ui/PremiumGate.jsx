@@ -3,10 +3,16 @@ import { useSubscription } from '../../hooks/useSubscription';
 
 const PremiumGate = ({ 
   children, 
-  featureKey, // Clé de la fonctionnalité (ex: 'horoscope_detail')
+  featureKey,
   onUpgrade, 
   preview = true 
 }) => {
+  // 🆓 MODE GRATUIT TOTAL — toutes les fonctionnalités débloquées
+  // Pour réactiver la monétisation, décommenter le code ci-dessous
+  // et commenter le return immédiat
+  return <>{children}</>;
+
+  /* MONÉTISATION DÉSACTIVÉE — À RÉACTIVER QUAND GOOGLE PLAY BILLING DISPONIBLE
   const { isPremiumUser, loading, checkFeature } = useSubscription();
   const [hasAccess, setHasAccess] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -14,8 +20,6 @@ const PremiumGate = ({
   useEffect(() => {
     const verify = async () => {
       if (loading) return;
-      // Si featureKey est fourni, on check précisément cette feature
-      // Sinon, on se base sur le statut premium global
       const access = featureKey ? await checkFeature(featureKey) : isPremiumUser;
       setHasAccess(access);
       setChecking(false);
@@ -46,26 +50,22 @@ const PremiumGate = ({
           {children}
         </div>
       )}
-      
       <div className={`
         ${preview ? 'absolute inset-0' : 'relative'}
         flex flex-col items-center justify-center 
         bg-gradient-to-b from-[#06081A]/60 to-[#06081A]/95
         backdrop-blur-md p-8 text-center
       `}>
-        {/* SVG Lock Icon */}
         <div className="w-12 h-12 bg-gold/10 rounded-full flex items-center justify-center mb-4 border border-gold/20">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A460" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
           </svg>
         </div>
-        
         <h3 className="font-serif text-cream text-lg mb-2">Astra Étoile</h3>
         <p className="text-muted text-xs leading-relaxed max-w-[200px] mb-6">
           Cette lecture céleste est réservée aux membres de la constellation Astra.
         </p>
-        
         <button
           onClick={onUpgrade}
           className="bg-gold hover:bg-gold-light text-night font-serif text-sm py-3 px-8 rounded-full shadow-xl shadow-gold/10 transition-transform active:scale-95"
@@ -75,6 +75,7 @@ const PremiumGate = ({
       </div>
     </div>
   );
+  FIN MONÉTISATION DÉSACTIVÉE */
 };
 
 export default PremiumGate;

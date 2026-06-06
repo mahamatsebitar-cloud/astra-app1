@@ -1,158 +1,131 @@
 // src/services/revenuecatService.js
-// Bridge RevenueCat ↔ Supabase pour les abonnements Astra
+// Bridge RevenueCat ↔ Supabase — MODE DEV avec mock
+// 🆓 Toutes les fonctionnalités gratuites pendant le dev
 
 import { Purchases } from '@revenuecat/purchases-capacitor';
 import { Toast } from '@capacitor/toast';
 import { supabase } from '../lib/supabase';
 
 const REVENUECAT_API_KEY = 'goog_CePyjXRDK1cbPXxbJNeDfjMMN';
+const IS_DEV = true; // ← Mettre false quand Google Play Billing est configuré
 
-// ━━━ MAPPING IDENTIFIANTS REVENUECAT → LOGIQUE MÉTIER ━━━
-// RevenueCat utilise $rc_monthly / $rc_annual dans l'offering "défaut"
-// On map vers nos identifiants internes pour Supabase
-
-const PRODUCT_MAP = {
-  '$rc_monthly': { plan: 'etoile_mensuel', display: 'mensuel' },
-  '$rc_annual':  { plan: 'etoile_annuel',  display: 'annuel' },
-  'mensuels':    { plan: 'etoile_mensuel', display: 'mensuel' },
-  'annuelles':   { plan: 'etoile_annuel',  display: 'annuel' }
+// ━━━ MOCK OFFRES ━━━
+const MOCK_OFFERINGS = {
+  monthly: {
+    identifier: 'mensuels',
+    priceString: '9,99 €',
+    price: 9.99,
+    currencyCode: 'EUR',
+    description: 'Abonnement mensuel Astra Étoile'
+  },
+  annual: {
+    identifier: 'annuelles',
+    priceString: '79,99 €',
+    price: 79.99,
+    currencyCode: 'EUR',
+    description: 'Abonnement annuel Astra Étoile'
+  },
+  monthlyPackage: {
+    identifier: '$rc_monthly',
+    product: {
+      identifier: 'mensuels',
+      priceString: '9,99 €',
+      price: 9.99,
+      currencyCode: 'EUR'
+    }
+  },
+  annualPackage: {
+    identifier: '$rc_annual',
+    product: {
+      identifier: 'annuelles',
+      priceString: '79,99 €',
+      price: 79.99,
+      currencyCode: 'EUR'
+    }
+  }
 };
 
-// ━━━ 1. INITIALISATION ━━━
-
 export async function initRevenueCat(userId) {
+  if (IS_DEV) {
+    console.log('[RevenueCat] 🧪 Mode DEV — skip init');
+    return;
+  }
   try {
-    await Toast.show({ text: 'RC init...', duration: 'short' });
-    
-    await Purchases.configure({
-      apiKey: REVENUECAT_API_KEY,
-      appUserID: userId
-    });
-    
-    await Toast.show({ text: 'RC init OK ✅', duration: 'short' });
-    console.log('[RevenueCat] ✅ Initialisé pour user:', userId);
+    await Purchases.configure({ apiKey: REVENUECAT_API_KEY, appUserID: userId });
   } catch (e) {
-    await Toast.show({ text: 'RC init ❌ ' + (e.message || e).substring(0, 60), duration: 'long' });
     console.error('[RevenueCat] ❌ Erreur init:', e);
   }
 }
 
-// ━━━ 2. RÉCUPÉRER LES OFFRES ━━━
-
 export async function getOfferings() {
+  if (IS_DEV) {
+    console.log('[RevenueCat] 🧪 Offres mock retournées');
+    return MOCK_OFFERINGS;
+  }
   try {
-    await Toast.show({ text: 'RC offres...', duration: 'short' });
-    
     const { offerings } = await Purchases.getOfferings();
-    
-    if (!offerings?.current) {
-      await Toast.show({ text: 'RC offres vides ⚠️', duration: 'long' });
-      console.warn('[RevenueCat] ⚠️ Pas d\'offering disponible');
-      return null;
-    }
-
+    if (!offerings?.current) return null;
     const current = offerings.current;
-    
-    // 🔥 Debug : log tous les packages disponibles
-    console.log('[RevenueCat] Packages disponibles:', current.availablePackages?.map(p => ({
-      identifier: p.identifier,
-      productId: p.product?.identifier,
-      price: p.product?.priceString
-    })));
-    
-    await Toast.show({ 
-      text: 'RC offres OK ✅ (' + (current.availablePackages?.length || 0) + ')', 
-      duration: 'short' 
-    });
-    
-    // 🔥 Cherche les packages par identifier RevenueCat ($rc_monthly, $rc_annual)
-    // ou fallback sur les identifiants produit (mensuels, annuelles)
-    const monthlyPkg = current.availablePackages?.find(p => 
-      p.identifier === '$rc_monthly' || p.product?.identifier === 'mensuels'
-    );
-    const annualPkg = current.availablePackages?.find(p => 
-      p.identifier === '$rc_annual' || p.product?.identifier === 'annuelles'
-    );
-    
     return {
-      monthly: monthlyPkg?.product || current.monthly?.product,
-      annual: annualPkg?.product || current.annual?.product,
+      monthly: current.monthly?.product,
+      annual: current.annual?.product,
       availablePackages: current.availablePackages,
-      // 🔥 On garde aussi les packages entiers pour l'achat
-      monthlyPackage: monthlyPkg || current.monthly,
-      annualPackage: annualPkg || current.annual
+      monthlyPackage: current.monthly,
+      annualPackage: current.annual
     };
   } catch (e) {
-    await Toast.show({ text: 'RC offres ❌ ' + (e.message || e).substring(0, 60), duration: 'long' });
     console.error('[RevenueCat] ❌ Erreur offerings:', e);
     return null;
   }
 }
 
-// ━━━ 3. ACHETER UN PACKAGE ━━━
-
 export async function purchasePackage(packageToPurchase) {
-  try {
-    await Toast.show({ text: 'RC achat...', duration: 'short' });
-    
-    const { customerInfo, productIdentifier } = await Purchases.purchasePackage({
-      aPackage: packageToPurchase
-    });
-
-    // Vérifie si l'achat a donné l'entitlement premium
-    const isPremium = customerInfo.entitlements.active['premium'] !== undefined;
-    
-    await Toast.show({ text: 'RC achat OK ✅', duration: 'short' });
-    
+  if (IS_DEV) {
+    console.log('[RevenueCat] 🧪 Achat simulé');
     return {
       success: true,
-      isPremium,
-      customerInfo,
-      productIdentifier
+      isPremium: true,
+      customerInfo: {
+        entitlements: {
+          active: {
+            premium: {
+              periodType: 'trial',
+              expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              productIdentifier: packageToPurchase?.product?.identifier || 'annuelles'
+            }
+          }
+        },
+        originalAppUserId: 'dev-user'
+      },
+      productIdentifier: packageToPurchase?.product?.identifier || 'annuelles'
     };
+  }
+  try {
+    const { customerInfo, productIdentifier } = await Purchases.purchasePackage({ aPackage: packageToPurchase });
+    const isPremium = customerInfo.entitlements.active['premium'] !== undefined;
+    return { success: true, isPremium, customerInfo, productIdentifier };
   } catch (e) {
-    // L'utilisateur a annulé — ce n'est pas une erreur
-    if (e.userCancelled) {
-      await Toast.show({ text: 'RC achat annulé', duration: 'short' });
-      return { success: false, cancelled: true, error: null };
-    }
-    await Toast.show({ text: 'RC achat ❌ ' + (e.message || e).substring(0, 60), duration: 'long' });
-    console.error('[RevenueCat] ❌ Erreur achat:', e);
+    if (e.userCancelled) return { success: false, cancelled: true, error: null };
     return { success: false, cancelled: false, error: e.message };
   }
 }
 
-// ━━━ 4. RESTAURER LES ACHATS ━━━
-
 export async function restorePurchases() {
+  if (IS_DEV) {
+    return { success: true, isPremium: false, customerInfo: { entitlements: { active: {} } } };
+  }
   try {
-    await Toast.show({ text: 'RC restore...', duration: 'short' });
-    
     const { customerInfo } = await Purchases.restorePurchases();
     const isPremium = customerInfo.entitlements.active['premium'] !== undefined;
-    
-    await Toast.show({ text: 'RC restore OK ✅', duration: 'short' });
-    
-    return {
-      success: true,
-      isPremium,
-      customerInfo
-    };
+    return { success: true, isPremium, customerInfo };
   } catch (e) {
-    await Toast.show({ text: 'RC restore ❌ ' + (e.message || e).substring(0, 60), duration: 'long' });
-    console.error('[RevenueCat] ❌ Erreur restore:', e);
     return { success: false, error: e.message };
   }
 }
 
-// ━━━ 5. SYNCHRONISER AVEC SUPABASE ━━━
-
 export async function syncSubscriptionToSupabase(userId, customerInfo) {
   try {
-    await Toast.show({ text: 'RC sync DB...', duration: 'short' });
-    
-    const entitlement = customerInfo.entitlements.active['premium'];
-    
+    const entitlement = customerInfo.entitlements?.active?.['premium'];
     let status = 'free';
     let plan = 'free';
     let currentPeriodEnd = null;
@@ -160,22 +133,13 @@ export async function syncSubscriptionToSupabase(userId, customerInfo) {
 
     if (entitlement) {
       status = entitlement.periodType === 'trial' ? 'trial' : 'active';
-      
-      // 🔥 Map l'identifiant produit RevenueCat vers notre plan interne
-      const productId = entitlement.productIdentifier || '';
-      const mapped = PRODUCT_MAP[productId];
-      plan = mapped?.plan || (productId.includes('annual') || productId.includes('annuel') ? 'etoile_annuel' : 'etoile_mensuel');
-      
+      plan = entitlement.productIdentifier?.includes('annual') || entitlement.productIdentifier?.includes('annuel') 
+        ? 'etoile_annuel' : 'etoile_mensuel';
       currentPeriodEnd = entitlement.expirationDate;
       if (status === 'trial') trialEndsAt = entitlement.expirationDate;
     }
 
-    const { data: existing } = await supabase
-      .from('subscriptions')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
+    const { data: existing } = await supabase.from('subscriptions').select('id').eq('user_id', userId).maybeSingle();
     const payload = {
       user_id: userId,
       status,
@@ -183,64 +147,43 @@ export async function syncSubscriptionToSupabase(userId, customerInfo) {
       current_period_end: currentPeriodEnd,
       trial_ends_at: trialEndsAt,
       platform: 'android',
-      external_id: customerInfo.originalAppUserId,
+      external_id: customerInfo.originalAppUserId || userId,
       updated_at: new Date().toISOString()
     };
 
     let result;
     if (existing) {
-      result = await supabase
-        .from('subscriptions')
-        .update(payload)
-        .eq('user_id', userId)
-        .select()
-        .single();
+      result = await supabase.from('subscriptions').update(payload).eq('user_id', userId).select().single();
     } else {
-      result = await supabase
-        .from('subscriptions')
-        .insert(payload)
-        .select()
-        .single();
+      result = await supabase.from('subscriptions').insert(payload).select().single();
     }
 
     if (result.error) throw result.error;
 
-    // Log la transaction
     await supabase.from('transactions').insert({
       user_id: userId,
       type: status === 'trial' ? 'trial_start' : 'purchase',
       amount_cents: 0,
       platform: 'android',
-      external_id: customerInfo.originalAppUserId
+      external_id: customerInfo.originalAppUserId || userId
     });
 
-    await Toast.show({ text: 'RC sync DB OK ✅', duration: 'short' });
     return { success: true, data: result.data };
   } catch (e) {
-    await Toast.show({ text: 'RC sync DB ❌ ' + (e.message || e).substring(0, 60), duration: 'long' });
     console.error('[RevenueCat] ❌ Erreur sync Supabase:', e);
     return { success: false, error: e.message };
   }
 }
 
-// ━━━ 6. VÉRIFIER L'ÉTAT ACTUEL ━━━
-
 export async function checkSubscriptionStatus() {
+  if (IS_DEV) {
+    return { isPremium: false, customerInfo: null };
+  }
   try {
-    await Toast.show({ text: 'RC check...', duration: 'short' });
-    
     const { customerInfo } = await Purchases.getCustomerInfo();
     const isPremium = customerInfo.entitlements.active['premium'] !== undefined;
-    
-    await Toast.show({ text: 'RC check OK ✅', duration: 'short' });
-    
-    return {
-      isPremium,
-      customerInfo
-    };
+    return { isPremium, customerInfo };
   } catch (e) {
-    await Toast.show({ text: 'RC check ❌ ' + (e.message || e).substring(0, 60), duration: 'long' });
-    console.error('[RevenueCat] ❌ Erreur check status:', e);
     return { isPremium: false, error: e.message };
   }
 }

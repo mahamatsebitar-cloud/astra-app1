@@ -297,12 +297,14 @@ const Profil = ({ onLogout, onNavigate }) => {
           <div className="text-center mt-5">
             <h2 className="font-serif text-2xl text-cream tracking-wide">{displayNom}</h2>
             <p className="text-gold/60 text-[10px] tracking-[4px] uppercase mt-1.5 font-bold italic">{titreProfil}</p>
+            {/* 🆓 MODE GRATUIT — badge Étoile désactivé
             {isActive && (
               <div className="flex items-center gap-1.5 mt-2 bg-gold/10 border border-gold/20 rounded-full px-3 py-1">
                 <span className="text-gold text-[10px]">✦</span>
                 <span className="text-gold text-[9px] tracking-[3px] uppercase font-black">Étoile</span>
               </div>
             )}
+            */}
           </div>
 
           <div className="mt-6 bg-card/40 backdrop-blur-xl border border-white/5 rounded-full px-6 py-2.5 text-[11px] tracking-wider flex items-center gap-4 shadow-2xl">

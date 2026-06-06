@@ -13,23 +13,49 @@ const NoeudLunaire = ({ onBack, onUpgrade }) => {
   const { user } = useAuthContext();
   const { profile, loading } = useProfile(user?.id);
 
+  // 🔥 DEBUG : log le profile pour voir ce qui arrive
+  console.log('[NoeudLunaire] Profile:', profile);
+  console.log('[NoeudLunaire] date_naissance:', profile?.date_naissance);
+  console.log('[NoeudLunaire] Keys du profile:', profile ? Object.keys(profile) : 'null');
+
   const dateNaissance = profile?.date_naissance || profile?.dateNaissance;
 
+  // 🔥 DEBUG
+  console.log('[NoeudLunaire] dateNaissance finale:', dateNaissance);
+
   const themeNatal = useMemo(() => {
-    if (!dateNaissance) return null;
-    return getThemeNatal(dateNaissance, profile?.heure_naissance || '12:00', profile?.latitude || 48.8566, profile?.longitude || 2.3522);
+    if (!dateNaissance) {
+      console.log('[NoeudLunaire] Pas de dateNaissance, themeNatal = null');
+      return null;
+    }
+    const result = getThemeNatal(dateNaissance, profile?.heure_naissance || '12:00', profile?.latitude || 48.8566, profile?.longitude || 2.3522);
+    console.log('[NoeudLunaire] themeNatal:', result);
+    return result;
   }, [dateNaissance, profile?.heure_naissance, profile?.latitude, profile?.longitude]);
 
   const noeudsReels = useMemo(() => {
-    if (!dateNaissance) return null;
-    return getNoeudsLunaires(dateNaissance);
+    if (!dateNaissance) {
+      console.log('[NoeudLunaire] Pas de dateNaissance, noeudsReels = null');
+      return null;
+    }
+    const result = getNoeudsLunaires(dateNaissance);
+    console.log('[NoeudLunaire] noeudsReels:', result);
+    return result;
   }, [dateNaissance]);
 
   const noeudsData = useMemo(() => {
-    if (!noeudsReels) return null;
+    if (!noeudsReels) {
+      console.log('[NoeudLunaire] Pas de noeudsReels, noeudsData = null');
+      return null;
+    }
     const cle = `${noeudsReels.nord.signe}_${noeudsReels.sud.signe}`;
+    console.log('[NoeudLunaire] cle:', cle);
     const variation = getNoeudVariation(cle);
-    if (!variation) return null;
+    console.log('[NoeudLunaire] variation:', variation);
+    if (!variation) {
+      console.log('[NoeudLunaire] Pas de variation pour cle:', cle);
+      return null;
+    }
     return {
       nordSigne: noeudsReels.nord.signe,
       sudSigne: noeudsReels.sud.signe,
@@ -55,11 +81,17 @@ const NoeudLunaire = ({ onBack, onUpgrade }) => {
     );
   }
 
+  // 🔥 DEBUG : log pourquoi on affiche le message d'erreur
+  console.log('[NoeudLunaire] noeudsData final:', noeudsData);
+
   if (!noeudsData) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-night px-10 text-center space-y-6">
         <p className="text-muted font-serif italic leading-relaxed">
           Le fil de votre destinée n'est pas encore tracé. Renseignez votre date de naissance pour révéler vos Nœuds Lunaires.
+        </p>
+        <p className="text-muted/40 text-xs">
+          Debug: date={dateNaissance || 'null'}, profile={profile ? 'ok' : 'null'}
         </p>
         <button 
             onClick={onBack} 

@@ -159,7 +159,6 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
     }
 
     try {
-      // Essai 1 : Partage natif Android (WhatsApp, SMS, Email...)
       await Share.share({
         title: 'Rejoins-moi sur Astra',
         text: 'Découvre notre compatibilité astrologique ! 🌙',
@@ -168,16 +167,12 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
       });
       setShareStatus('shared');
     } catch (err) {
-      // L'utilisateur a annulé ou erreur
       console.log('Share annulé:', err);
-      
-      // Essai 2 : Copier dans le presse-papiers natif
       try {
         await Clipboard.write({ string: link });
         setShareStatus('copied');
       } catch (err2) {
         console.log('Clipboard échoue:', err2);
-        // Fallback ultime
         setShareStatus('manual');
       }
     }
@@ -216,12 +211,14 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
           </div>
           <div className="flex items-center gap-2">
             <h2 className="font-serif text-2xl text-cream">{ami.nom}</h2>
+            {/* 🆓 MODE GRATUIT — badge Étoile ami désactivé
             {ami?.isPremium && (
               <div className="flex items-center gap-1 bg-gold/10 border border-gold/20 rounded-full px-2 py-0.5">
                 <span className="text-gold text-[9px]">✦</span>
                 <span className="text-gold text-[8px] tracking-[2px] uppercase font-black">Étoile</span>
               </div>
             )}
+            */}
           </div>
           <p className="text-muted text-xs mt-1">@{ami.username || '...'}</p>
           {tempsRelatif && <p className="text-muted/40 text-[10px] mt-1">{tempsRelatif}</p>}
@@ -372,12 +369,7 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
             )}
           </div>
           <button onClick={() => {
-              // Si free (pas trial, pas premium) et déjà 1 ami → afficher gate
-              const isFreeUser = !isTrial && !isActive;
-              if (!showSearch && isFreeUser && friends.length >= 1) {
-                setShowFriendLimit(true);
-                return;
-              }
+              // 🆓 MODE GRATUIT — limite amis désactivée
               setShowSearch(!showSearch);
             }}
             className={`w-14 h-14 rounded-[20px] flex items-center justify-center transition-all duration-500 shadow-lg ${showSearch ? 'bg-red-500/10 text-red-500 border border-red-500/20 rotate-90' : 'bg-gold/10 text-gold border border-gold/20'}`}>
@@ -385,6 +377,7 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
           </button>
         </header>
 
+        {/* LIMITE AMIS DÉSACTIVÉE
         {showFriendLimit && (
           <div className="animate-in zoom-in-95 duration-300">
             <PremiumGate featureKey="noeuds_lunaires" onUpgrade={() => { setShowFriendLimit(false); onUpgrade(); }} preview={false}>
@@ -401,6 +394,7 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
             </button>
           </div>
         )}
+        */}
 
         <AnimatePresence>
           {showSearch && (
@@ -518,9 +512,11 @@ const Compatibilite = ({ onUpgrade, deepLinkTarget, onDeepLinkConsumed }) => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <p className="text-cream font-bold tracking-wide">{ami?.nom}</p>
+                        {/* 🆓 MODE GRATUIT — badge ami désactivé
                         {ami?.isPremium && (
                           <span className="text-gold text-[8px]">✦</span>
                         )}
+                        */}
                       </div>
                       <p className="text-[9px] text-muted uppercase tracking-[0.1em]">@{ami?.username} · {ami?.signe_solaire}</p>
                       {getTempsRelatif(ami?.last_seen_at) && (
