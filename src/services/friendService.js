@@ -85,23 +85,6 @@ export const sendFriendRequest = async (senderId, receiverId) => {
       }
     }
 
-    // 🆓 MODE GRATUIT — limite amis désactivée
-    // const { data: friendsCount } = await supabase
-    //   .from('friendships')
-    //   .select('id', { count: 'exact' })
-    //   .or(`sender_id.eq.${senderId},receiver_id.eq.${senderId}`)
-    //   .eq('status', 'accepted');
-    // 
-    // const hasUnlimitedFriends = await hasFeatureAccess(senderId, 'connexions_illimitees');
-    // 
-    // if (!hasUnlimitedFriends && (friendsCount?.length || 0) >= 1) {
-    //   return { 
-    //     data: null, 
-    //     error: 'LIMIT_REACHED',
-    //     limitReached: true 
-    //   };
-    // }
-
     const { data, error } = await supabase
       .from('friendships')
       .insert({
@@ -121,7 +104,6 @@ export const sendFriendRequest = async (senderId, receiverId) => {
       metadata: {}
     });
 
-    // ─── NOTIFICATION SOCIALE AVEC DEEP LINK ───
     const { data: senderProfile } = await supabase
       .from('profiles')
       .select('nom')
@@ -164,7 +146,6 @@ export const acceptFriendRequest = async (friendshipId, userId) => {
       metadata: {}
     });
 
-    // ─── NOTIFICATION SOCIALE AVEC DEEP LINK ───
     const { data: acceptorProfile } = await supabase
       .from('profiles')
       .select('nom')
@@ -184,13 +165,23 @@ export const acceptFriendRequest = async (friendshipId, userId) => {
 // ━━━ 6. RÉCUPÉRER AMIS ━━━
 export const getFriends = async (userId) => {
   try {
-    const { data: friendships, error } = await supabase
-      .from('friendships')
-      .select('id, sender_id, receiver_id')
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-      .eq('status', 'accepted');
+    // 🔥 FIX : Deux requêtes séparées au lieu de .or() — résout le bug UUID/RLS
+    const [{ data: asSender, error: errSender }, { data: asReceiver, error: errReceiver }] = await Promise.all([
+      supabase
+        .from('friendships')
+        .select('id, sender_id, receiver_id')
+        .eq('sender_id', userId)
+        .eq('status', 'accepted'),
+      supabase
+        .from('friendships')
+        .select('id, sender_id, receiver_id')
+        .eq('receiver_id', userId)
+        .eq('status', 'accepted')
+    ]);
 
-    if (error) throw error;
+    if (errSender || errReceiver) throw (errSender || errReceiver);
+
+    const friendships = [...(asSender || []), ...(asReceiver || [])];
     if (!friendships?.length) return { data: [], error: null };
 
     const friendIds = friendships.map(f =>
@@ -204,13 +195,11 @@ export const getFriends = async (userId) => {
 
     if (pError) throw pError;
 
-    // Récupérer le statut premium de chaque ami
     const { data: subscriptions } = await supabase
       .from('subscriptions')
       .select('user_id, status, plan')
       .in('user_id', friendIds);
 
-    // Enrichir les profils avec le statut premium
     const profilesEnriched = (profiles || []).map(p => ({
       ...p,
       isPremium: subscriptions?.some(s => 
@@ -237,43 +226,21 @@ export const getFriends = async (userId) => {
 // ━━━ 7. DEMANDES EN ATTENTE ━━━
 export const getPendingRequests = async (userId) => {
   try {
-    // 🔥 DEBUG SESSION : Vérifier qui est authentifié côté Supabase
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log('[friendService] 🔐 Session user id:', session?.user?.id);
-    console.log('[friendService] 🔐 Param userId:', userId);
-    console.log('[friendService] 🔐 Match ?', session?.user?.id === userId);
-    console.log('[friendService] 🔐 Session exists ?', !!session);
-
-    console.log('[friendService] getPendingRequests pour userId:', userId);
-    
     const { data: friendships, error } = await supabase
       .from('friendships')
-      .select('id, created_at, sender_id')
+      .select('id, created_at, sender_id, receiver_id, status')
       .eq('receiver_id', userId)
       .eq('status', 'pending');
 
-    console.log('[friendService] friendships brute:', friendships);
-    console.log('[friendService] error:', error);
-
-    if (error) {
-      console.error('[friendService] Erreur Supabase:', error);
-      throw error;
-    }
-    
-    if (!friendships?.length) {
-      console.log('[friendService] Aucune demande en attente');
-      return { data: [], error: null };
-    }
+    if (error) throw error;
+    if (!friendships?.length) return { data: [], error: null };
 
     const senderIds = friendships.map(f => f.sender_id);
-    console.log('[friendService] senderIds:', senderIds);
     
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, nom, signe_solaire, username')
       .in('id', senderIds);
-
-    console.log('[friendService] profiles des senders:', profiles);
 
     const result = friendships.map(f => ({
       id: f.id,
@@ -281,7 +248,6 @@ export const getPendingRequests = async (userId) => {
       sender: profiles?.find(p => p.id === f.sender_id)
     }));
 
-    console.log('[friendService] result final:', result);
     return { data: result, error: null };
   } catch (error) {
     console.error("[friendService] Erreur demandes en attente:", error.message);
@@ -319,7 +285,6 @@ export const logCompatibilityView = async (viewerId, viewedId) => {
       metadata: {}
     });
 
-    // ─── NOTIFICATION SOCIALE AVEC DEEP LINK ───
     const { data: viewerProfile } = await supabase
       .from('profiles')
       .select('nom')
