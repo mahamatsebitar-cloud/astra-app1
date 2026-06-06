@@ -1,5 +1,5 @@
 // src/screens/EditProfil.jsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useAuthContext } from '../context/AuthContext';
 import { useProfileContext } from '../context/ProfileContext';
@@ -29,6 +29,10 @@ export default function EditProfil({ onBack }) {
   const [error, setError] = useState(null);
   const [usernameStatus, setUsernameStatus] = useState(null);
   const [showWarning, setShowWarning] = useState(false);
+  
+  // 🔥 REFS pour le dropdown
+  const dropdownRef = useRef(null);
+  const inputRef = useRef(null);
 
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
   const months = [
@@ -38,6 +42,25 @@ export default function EditProfil({ onBack }) {
   const years = Array.from({ length: 80 }, (_, i) => 2026 - i);
   const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
   const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
+
+  // 🔥 Gestion du clic en dehors du dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [dropdownOpen]);
 
   useEffect(() => {
     if (!profile) return;
@@ -98,12 +121,16 @@ export default function EditProfil({ onBack }) {
     return () => clearTimeout(timer);
   }, [villeQuery]);
 
-  const handleSelectVille = (ville) => {
+  const handleSelectVille = useCallback((ville) => {
     setVilleSelectionnee(ville);
     setVilleQuery(ville.label);
     setVilleSuggestions([]);
     setDropdownOpen(false);
-  };
+    // 🔥 Remettre le focus sur l'input après sélection
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
+  }, []);
 
   useEffect(() => {
     if (!username || username === profile?.username) {
@@ -315,10 +342,13 @@ export default function EditProfil({ onBack }) {
         </Card>
 
         <Card className="border-white/5 bg-white/[0.02] p-4">
-          <div className="space-y-1">
+          <div className="space-y-1" ref={dropdownRef}>
             <label className="text-gold/50 text-[9px] uppercase tracking-widest ml-1">Lieu de naissance</label>
             <div className="relative">
-              <input type="text" value={villeQuery}
+              <input 
+                ref={inputRef}
+                type="text" 
+                value={villeQuery}
                 onChange={(e) => { setVilleQuery(e.target.value); setVilleSelectionnee(null); }}
                 placeholder="Ville de naissance..."
                 className="bg-[#141731]/80 border border-white/5 text-cream p-4 rounded-2xl w-full text-sm outline-none focus:border-gold/30 pr-10" />
@@ -330,9 +360,11 @@ export default function EditProfil({ onBack }) {
             </div>
 
             {dropdownOpen && villeSuggestions.length > 0 && (
-              <div className="mt-2 bg-[#0E1228] border border-gold/10 rounded-2xl overflow-hidden shadow-2xl">
+              <div className="mt-2 bg-[#0E1228] border border-gold/10 rounded-2xl overflow-hidden shadow-2xl max-h-60 overflow-y-auto">
                 {villeSuggestions.map((ville, idx) => (
-                  <div key={idx} onClick={() => handleSelectVille(ville)}
+                  <div 
+                    key={idx} 
+                    onClick={() => handleSelectVille(ville)}
                     className="py-3 px-4 cursor-pointer hover:bg-[#1a1f3a] border-b border-white/5 last:border-0">
                     <span className="text-cream text-sm font-medium">{ville.label}</span>
                   </div>
